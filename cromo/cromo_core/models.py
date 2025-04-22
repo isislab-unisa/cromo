@@ -46,7 +46,7 @@ class Cromo_POI(models.Model):
         choices=Status.choices,
         default=Status.READY
     )
-    location = PlainLocationField(based_fields=['city'], zoom=7, null=True, blank=True)
+    location = PlainLocationField(zoom=7, null=True, blank=True)
 
     class Meta:
         db_table = "Cromo_POI"

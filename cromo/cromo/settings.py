@@ -96,8 +96,14 @@ ROOT_URLCONF = 'cromo.urls'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 10 GB
 
 LOCATION_FIELD = {
-    'provider.openstreetmap.max_zoom': 18,
+    "provider": "openstreetmap",
+    "provider.openstreetmap.search": "https://nominatim.openstreetmap.org/search",
+    "provider.openstreetmap.reverse": "https://nominatim.openstreetmap.org/reverse",
+    "provider.openstreetmap.max_zoom": 18,
+    "map.height": "480",
+    "map.zoom": 7,
 }
+
 
 LOGGING = {
     "version": 1,

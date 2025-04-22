@@ -39,6 +39,11 @@ class Cromo_POIAdmin(ModelAdmin):
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
     inlines = [Cromo_View_Inline]
+    from location_field.widgets import LocationWidget
+    from location_field.models.plain import PlainLocationField
+    formfield_overrides = {
+        PlainLocationField: {"widget": LocationWidget},
+    }
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
