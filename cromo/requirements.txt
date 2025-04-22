@@ -1,0 +1,18 @@
+django
+django-unfold
+dotenv
+gunicorn
+mysqlclient
+whitenoise
+pillow
+django-storages
+boto3
+minio
+celery
+redis
+requests
+certifi
+pip-system-certs
+django-jsonform
+# django-map-widgets
+django-location-field

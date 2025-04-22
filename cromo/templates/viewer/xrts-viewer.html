@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>XRTwinScape Viewer</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <base href="/">
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                touch-action: none;
+            }
+            body {
+                overflow: hidden;
+                font-family: 'Arial', sans-serif;
+                user-select: none;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+            }
+            .hidden {
+                display: none !important;
+            }
+            #ui {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+            }
+            #ui * {
+                pointer-events: auto;
+            }
+            #infoPanel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.3);
+            }
+            #infoPanel > #infoPanelContent {
+                position: absolute;
+                top: 40px;
+                left: 50%;
+                transform: translate(-50%, 0);
+                min-height: 280px;
+                min-width: 320px;
+                padding: 8px;
+                border-radius: 24px;
+                color: black;
+                background-color: #eeed;
+                display: flex;
+                flex-direction: column;
+            }
+            #infoPanel > #infoPanelContent > #header {
+                font-size: 24px;
+                font-weight: bold;
+                padding-bottom: 16px;
+                color: #444;
+                display: none;
+            }
+            #infoPanel > #infoPanelContent > #tabs {
+                display: flex;
+                gap: 16px;
+                background-color: #666;
+                padding: 8px;
+                border-radius: 22px;
+            }
+            #infoPanel > #infoPanelContent > #tabs > .tab {
+                padding: 8px;
+                border-radius: 16px;
+                cursor: pointer;
+                flex-grow: 1;
+                text-align: center;
+                font-weight: bold;
+                font-size: 14px;
+                color: #222;
+                transition: background-color 250ms ease;
+            }
+            #infoPanel > #infoPanelContent > #tabs > .tab:hover {
+                background-color: #eee;
+            }
+            #infoPanel > #infoPanelContent > #tabs > .tab.active {
+                background-color: #eee;
+            }
+            #infoPanel > #infoPanelContent > #infoPanels {
+                padding: 16px;
+            }
+            #infoPanel > #infoPanelContent .control-item {
+                display: flex;
+                justify-content: space-between;
+                gap: 32px;
+                line-height: 1.5;
+            }
+            #infoPanel > #infoPanelContent > #infoPanels h1 {
+                font-size: 14px;
+                font-weight: bold;
+                padding: 0 0 6px 0;
+            }
+            #infoPanel > #infoPanelContent .control-item > .control-action {
+                text-align: left;
+                color: #333;
+            }
+            #infoPanel > #infoPanelContent .control-item > .control-key {
+                text-align: right;
+                color: #666;
+            }
+            #infoPanel > #infoPanelContent .control-spacer {
+                border-bottom: 1px dashed #666;
+                margin: 10px 0;
+            }
+            
+            /* loadingWrap */
+            
+            #loadingWrap {
+                position: fixed;
+                bottom: 120px;
+                left: 50%;
+                transform: translate(-50%, 0);
+                width: 380px;
+            
+                display: flex;
+                flex-direction: column;
+            
+                padding: 16px;
+            }
+            #loadingWrap > #loadingText {
+                font-size: 18px;
+                color: white;
+                text-align: center;
+                text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+            }
+            #loadingWrap > #loadingBar {
+                width: 100%;
+                height: 10px;
+                margin-top: 8px;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            
+            /* controlsWrap */
+            
+            #controlsWrap {
+                position: absolute;
+                left: max(16px, env(safe-area-inset-left));
+                right: max(16px, env(safe-area-inset-right));
+                bottom: max(16px, env(safe-area-inset-bottom));
+            
+                display: flex;
+                flex-direction: column;
+            }
+            
+            #controlsWrap.faded-in {
+                visibility: visible;
+                opacity: 1;
+                transition: opacity 0.5s ease-out;
+            }
+            #controlsWrap.faded-out {
+                visibility: hidden;
+                opacity: 0;
+                transition: visibility 0s 0.5s, opacity 0.5s ease-out;
+            }
+            
+            #controlsWrap > #timelineContainer {
+                height: 30px;
+                cursor: pointer;
+            }
+            #controlsWrap > #timelineContainer > #line {
+                width: 100%;
+                height: 50%;
+                border-bottom: 1px solid #8888;
+            }
+            #controlsWrap > #timelineContainer > #handle {
+                position: absolute;
+                top: 15.5px;
+                width: 10px;
+                height: 10px;
+                transform: translate(-50%, -50%);
+                border: 1px solid black;
+                border-radius: 50%;
+                background-color: #fff8;
+            }
+            #controlsWrap > #timelineContainer > #time {
+                position: absolute;
+                top: 0;
+                padding: 2px 4px;
+                transform: translate(-50%, -100%);
+                font-size: 12px;
+                color: white;
+                background-color: rgba(0, 0, 0, 0.5);
+                border-radius: 4px;
+            }
+            #controlsWrap > #buttonContainer {
+                display: flex;
+                gap: 8px;
+            }
+            
+            /* spacer */
+            
+            .spacer {
+                flex-grow: 1;
+            }
+            
+            /* settingsPanel */
+            
+            #settingsPanel {
+                position: fixed;
+                right: max(16px, env(safe-area-inset-right));
+                bottom: calc(max(16px, env(safe-area-inset-bottom)) + 70px);
+                padding: 10px;
+                color: #eee;
+                background-color: rgba(0, 0, 0, 0.3);
+                border-radius: 8px;
+            
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 4px;
+            
+                font-size: 14px;
+            }
+            #settingsPanel > .settingsRow {
+                display: flex;
+                gap: 4px;
+                width: 100%;
+                
+            }
+            #settingsPanel > .settingsRow > .button {
+                padding: 10px 0px;
+                flex-grow: 1;
+            }
+            
+            /* toggleWrap */
+            
+            .toggleWrap {
+                position: relative;
+                background-color: #dddd;
+                border: 1px solid #888;
+                border-radius: 8px;
+                height: 40px;
+                width: 120px;
+            }
+            .toggleWrap > .toggleHighlight {
+                position: absolute;
+                left: 0;
+                width: 50%;
+                height: 100%;
+                background-color: #eee;
+                border-radius: 8px;
+                transition: left 0.1s ease-out;
+            }
+            .toggleWrap > .toggleHighlight.right {
+                left: 60px;
+            }
+            .toggleWrap > button {
+                position: absolute;
+                width: 60px;
+                height: 100%;
+                border: 0;
+                border-radius: 8px;
+            
+                cursor: pointer;
+                font-size: 14px;
+                letter-spacing: -0.25px;
+            
+                color: #222;
+                background-color: transparent;
+            
+                appearance: none;
+            }
+            .toggleWrap > button:hover {
+                color: black;
+            }
+            .toggleWrap > button.left {
+                left: 0;
+            }
+            .toggleWrap > button.right {
+                right: 0;
+            }
+            
+            /* button */
+            .button {
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                margin: 0;
+                color: #222;
+                background-color: #dddd;
+                border: 1px solid #888;
+                border-radius: 8px;
+                cursor: pointer;
+            
+                /* font-weight: bold; */
+                font-size: 14px;
+                letter-spacing: -0.25px;
+            }
+            .button:hover {
+                background-color: #eee;
+            }
+            .button > svg {
+                display: block;
+                margin: auto;
+            }
+            #poster {
+                display: none;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+            button {
+                color: #222;
+            }
+            button:active {
+                outline: none;
+            }
+            #joystickBase {
+                position: absolute;
+                width: 96px;
+                height: 96px;
+                transform: translate(-50%, -50%);
+                border-radius: 50%;
+                touch-action: none;
+            
+                background: radial-gradient(circle at center, #0000 50%, #000f 100%);
+                background-color: #0002;
+            }
+            
+            #joystickBase > #joystick {
+                position: absolute;
+                width: 48px;
+                height: 48px;
+                transform: translate(-50%, -50%);
+                border-radius: 50%;
+                touch-action: none;
+            
+                background-color: #fff8;
+            }
+            #topbar {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0px 0px;
+                background: rgba(255, 255, 255, 0.3);
+                backdrop-filter: blur(4px);
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1000;
+            }
+
+            #topbar img {
+                height: 100px;
+            }
+
+            #topbar h1 {
+                font-size: 1.5rem;
+                margin-right: 30px;
+                color: black;
+            }
+        </style>
+
+        <link rel="stylesheet" href=  "http://localhost/static/viewer/index.css">
+		<link rel="icon" type="image/x-icon" href="favico.png"/>
+        <script type="importmap">
+            {
+                "imports": {
+                    "playcanvas": "https://cdn.jsdelivr.net/npm/playcanvas@2.6.0/build/playcanvas.mjs",
+                    "annotation":  "http://localhost/static/viewer/annotation.mjs",
+					"pwc": "https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.2.5/dist/pwc.mjs"
+                }
+            }
+		
+        </script>
+		
+        <script>
+            window.resourceFromDjango = "{{ resource|escapejs }}";
+            window.annotationFromDjango = "{{annotation|escapejs}}";
+            const resource = window.resourceFromDjango;
+            const annotation = window.annotationFromDjango;
+            console.log("annotation: ",annotation)
+        </script>
+        <script type="module">
+			var  camera, annotations;
+            // "http://localhost/static/viewer/conf.json"
+			fetch(`/pick_annotation_from_minio/${annotation}`)
+				.then(res => res.json())
+				.then(config => {
+					camera = config.camera;
+					annotations = config.annotations;
+					const url = new URL(location.href);
+					// const resource = "pcpc_2_pcpc.ply"
+                    
+                    console.log(resource)
+					window.sse = {
+							settings: {"camera":{"fov":50,"position":camera.position,
+							"target":camera.target,"startAnim":"none","animTrack":null},
+							"background":{"color":[0.4,0.4,0.4]},"animTracks":[]},
+							contentUrl: `/pick_data_from_minio/${resource}`,
+							//http://127.0.0.1:5500/xrts-viewer.html?sdata=http://127.0.0.1:5500/koala_stuffie.ply
+						};
+						const annotationsContainer = document.getElementsByTagName('pc-scene')[0];
+							
+				
+							annotations.forEach(annotation => {
+									// Create the <pc-entity> element
+									const pcEntity = document.createElement('pc-entity');
+									pcEntity.setAttribute('name', annotation.name);
+									pcEntity.setAttribute('position', annotation.position.join(' '));
+
+									// Create the <pc-scripts> element
+									const pcScripts = document.createElement('pc-scripts');
+
+									// Create the <pc-script> element with the annotation script
+									const pcScript = document.createElement('pc-script');
+									pcScript.setAttribute('name', 'annotation');
+
+									// Set the attributes for the script (title, text, camera position)
+									const scriptAttributes = {
+									"title": annotation.title,
+									"text": annotation.text,
+									"cameraPos": annotation.cameraPos
+									};
+									pcScript.setAttribute('attributes', JSON.stringify(scriptAttributes));
+
+									// Append <pc-script> to <pc-scripts>, and <pc-scripts> to <pc-entity>
+									pcScripts.appendChild(pcScript);
+									pcEntity.appendChild(pcScripts);
+
+									// Append the <pc-entity> to the scene container
+									annotationsContainer.appendChild(pcEntity);
+								});
+
+				});
+			
+		
+        </script>
+	    <script type="module" src= " http://localhost/static/viewer/util.js"></script>
+		<!--<script type="module" src="https://cdn.jsdelivr.net/npm/@playcanvas/web-components@0.2.5/dist/pwc.mjs"></script>-->
+    </head>
+    <body>
+        <div id="topbar">
+            <img src="http://localhost/static/viewer/twinscape_logo.png" alt="Twinscape Logo">
+            <h2 id="title">{{title}}</h2>
+        </div>
+        <pc-app antialias="false" depth="false" high-resolution="true" stencil="false">
+			<pc-asset id="camera-controls" src="http://localhost/static/viewer/camera-controls.mjs" preload></pc-asset>
+            <pc-asset id="xr-controllers" src="https://cdn.jsdelivr.net/npm/playcanvas@2.6.1/scripts/esm/xr-controllers.min.mjs" preload></pc-asset>
+            <pc-asset id="xr-navigation" src="https://cdn.jsdelivr.net/npm/playcanvas@2.6.1/scripts/esm/xr-navigation.min.mjs" preload></pc-asset>
+            <pc-asset src= "http://localhost/static/viewer/annotation.mjs" preload></pc-asset>
+
+			<pc-scene>
+                <!-- Camera (with XR support) -->
+                <pc-entity name="camera root">
+                    <pc-entity name="camera">
+                        <pc-camera nearClip="0.01" farClip="1000" horizontalFov="true" tonemap="neutral"></pc-camera>
+                        <pc-scripts>
+                            <pc-script name="cameraControls"></pc-script>
+                        </pc-scripts>
+                    </pc-entity>
+                    <pc-scripts>
+                        <pc-script name="xrControllers"></pc-script>
+                        <pc-script name="xrNavigation"></pc-script>
+                    </pc-scripts>
+                </pc-entity>
+                <!-- Light (for XR controllers) -->
+                <pc-entity name="light" rotation="35 45 0">
+                    <pc-light color="white" intensity="1.5"></pc-light>
+                </pc-entity>
+				<!--<pc-entity name="annotation1" position="-0.0686940997838974 -1.441078782081604 0.8341890573501587">
+                    <pc-scripts>
+                        <pc-script name="annotation" attributes='{
+                            "title": "Repainting Scaffold",
+                            "text": "<p>This scaffolding is part of ongoing (as of December 2024) work to <a href=\"https://static1.squarespace.com/static/5e6fff374bb4d0147cd19d8a/t/679aab99901a1056521ccae8/1738189722180/Notice+of+Community+Meeting+for+the+Exterior+Horizontal+Cladding+Replacement+Project+%284915-8987-4957.4%29.pdf\">remove and repaint</a> the old lead paint on the towers exterior.</p><p>Sutro tower is equipped with a built-in water line, enabling workers to use high pressure water to blast off the old paint. The scaffolding serves to prevent the lead from escaping into the air.</p>",
+                            "cameraPos": [0,0,0]
+                        }'></pc-script>
+                    </pc-scripts>
+                </pc-entity>-->
+
+                <!-- Splat -->
+                <pc-entity name="splat" rotation="0 0 180">
+                </pc-entity>
+
+				
+            </pc-scene>
+        </pc-app>
+
+        <div id="ui">
+            <div id="poster"></div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingWrap">
+                <div id="loadingText"></div>
+                <div id="loadingBar"></div>
+            </div>
+
+            <div id="controlsWrap" class="faded-in">
+
+                <!-- Timeline Panel -->
+                <div id="timelineContainer" class="hidden">
+                    <div id="line"></div>
+                    <div id="handle"></div>
+                    <div id="time" class="hidden">0:00</div>
+                </div>
+
+                <!-- Buttons Panel -->
+                <div id="buttonContainer">
+                    <button id="play" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="4 4 16 16" fill="currentColor"><path d="M15 12.3301L9 16.6603L9 8L15 12.3301Z"/></svg>
+                    </button>
+                    <button id="pause" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 20 20" fill="currentColor"><path d="M5 16V4h3v12H5zm7-12h3v12h-3V4z"/></svg>
+                    </button>
+                    <div class="spacer"></div>
+                    <button id="arMode" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-181 240-296q-19-11-29.5-29T200-365v-230q0-22 10.5-40t29.5-29l200-115q19-11 40-11t40 11l200 115q19 11 29.5 29t10.5 40v230q0 22-10.5 40T720-296L520-181q-19 11-40 11t-40-11Zm0-92v-184l-160-93v185l160 92Zm80 0 160-92v-185l-160 93v184ZM80-680v-120q0-33 23.5-56.5T160-880h120v80H160v120H80ZM280-80H160q-33 0-56.5-23.5T80-160v-120h80v120h120v80Zm400 0v-80h120v-120h80v120q0 33-23.5 56.5T800-80H680Zm120-600v-120H680v-80h120q33 0 56.5 23.5T880-800v120h-80ZM480-526l158-93-158-91-158 91 158 93Zm0 45Zm0-45Zm40 69Zm-80 0Z"/></svg>
+                    </button>
+                    <button id="vrMode" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M300-240q-66 0-113-47t-47-113v-163q0-51 32-89.5t82-47.5q57-11 113-15.5t113-4.5q57 0 113.5 4.5T706-700q50 10 82 48t32 89v163q0 66-47 113t-113 47h-40q-13 0-26-1.5t-25-6.5l-64-22q-12-5-25-5t-25 5l-64 22q-12 5-25 6.5t-26 1.5h-40Zm0-80h40q7 0 13.5-1t12.5-3q29-9 56.5-19t57.5-10q30 0 58 9.5t56 19.5q6 2 12.5 3t13.5 1h40q33 0 56.5-23.5T740-400v-163q0-22-14-38t-35-21q-52-11-104.5-14.5T480-640q-54 0-106 4t-105 14q-21 4-35 20.5T220-563v163q0 33 23.5 56.5T300-320ZM40-400v-160h60v160H40Zm820 0v-160h60v160h-60Zm-380-80Z"/></svg>
+                    </button>
+                    <button id="info" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+                    </button>
+                    <button id="settings" class="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h480q33 0 56.5 23.5T720-720v180l160-160v440L720-420v180q0 33-23.5 56.5T640-160H160Zm0-80h480v-480H160v480Zm0 0v-480 480Z"/></svg>
+                    </button>
+                    <button id="enterFullscreen" class="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-120v-200h80v120h120v80H120Zm520 0v-80h120v-120h80v200H640ZM120-640v-200h200v80H200v120h-80Zm640 0v-120H640v-80h200v200h-80Z"/></svg>
+                    </button>
+                    <button id="exitFullscreen" class="button hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-120v-120H120v-80h200v200h-80Zm400 0v-200h200v80H720v120h-80ZM120-640v-80h120v-120h80v200H120Zm520 0v-200h80v120h120v80H640Z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings Panel -->
+            <div id="settingsPanel" class="hidden">
+                <div>Camera Mode</div>
+                <div id="cameraToggle" class="toggleWrap">
+                    <div id="cameraToggleHighlight" class="toggleHighlight"></div>
+                    <button id="orbit" class="left">Orbit</button>
+                    <button id="fly" class="right">Fly</button>
+                </div>
+                <div>Render Quality</div>
+                <div id="qualityToggle" class="toggleWrap">
+                    <div id="qualityToggleHighlight" class="toggleHighlight"></div>
+                    <button id="low" class="left">Low</button>
+                    <button id="high" class="right">High</button>
+                </div>
+                <div>View</div>
+                <div class="settingsRow">
+                    <button id="frame" class="button">Frame</button>
+                    <button id="reset" class="button">Reset</button>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div id="infoPanel" class="hidden">
+                <div id="infoPanelContent" onpointerdown="event.stopPropagation()">
+                    <div id="header">Controls</div>
+                    <div id="tabs">
+                        <div id="desktopTab" class="tab active">Desktop</div>
+                        <div id="touchTab" class="tab">Touch</div>
+                    </div>
+					<div id="controls">
+						<h3>Controls</h3>
+						<div class="control-item">
+							<span class="control-action">Annotations</span>
+							<span class="control-key"><input type="checkbox" checked id="annotationToggle"/></span>
+						</div>
+					</div>>
+                    <div id="infoPanels">
+                        <div id="desktopInfoPanel">
+                            <div class="control-spacer"></div>
+                            <h1>Orbit Mode</h1>
+                            <div class="control-item">
+                                <span class="control-action">Orbit</span>
+                                <span class="control-key">Left Mouse</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Pan</span>
+                                <span class="control-key">Right Mouse</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Zoom</span>
+                                <span class="control-key">Mouse Wheel</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Set Focus</span>
+                                <span class="control-key">Double Click</span>
+                            </div>
+                            <div class="control-spacer"></div>
+                            <h1>Fly Mode</h1>
+                            <div class="control-item">
+                                <span class="control-action">Look Around</span>
+                                <span class="control-key">Left Mouse</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Fly</span>
+                                <span class="control-key">W,S,A,D</span>
+                            </div>
+                            <div class="control-spacer"></div>
+                            <div class="control-item">
+                                <span class="control-action">Frame Scene</span>
+                                <span class="control-key">F</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Reset Camera</span>
+                                <span class="control-key">R</span>
+                            </div>
+                        </div>
+                        <div id="touchInfoPanel" class="hidden">
+                            <div class="control-spacer"></div>
+                            <h1>Orbit Mode</h1>
+                            <div class="control-item">
+                                <span class="control-action">Orbit</span>
+                                <span class="control-key">One Finger Drag</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Pan</span>
+                                <span class="control-key">Two Finger Drag</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Zoom</span>
+                                <span class="control-key">Pinch</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Set Focus</span>
+                                <span class="control-key">Double Tap</span>
+                            </div>
+                            <div class="control-spacer"></div>
+                            <h1>Fly Mode</h1>
+                            <div class="control-item">
+                                <span class="control-action">Look Around</span>
+                                <span class="control-key">Touch on Right</span>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-action">Fly</span>
+                                <span class="control-key">Touch on Left</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touch Joystick -->
+            <div id="joystickBase" class="hidden">
+                <div id="joystick"></div>
+            </div>
+		
+        </div>
+		<script type="module" src="http://localhost/static/viewer/index.js"></script>
+    </body>
+</html>

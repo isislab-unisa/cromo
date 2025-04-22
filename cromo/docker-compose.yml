@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  web:
+    build: .
+    container_name: cromo
+    command: ["gunicorn", "--bind", "0.0.0.0:8000", "cromo.wsgi:application"]
+    volumes:
+      - .:/workspace
+    expose:
+      - 8000
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+
+  celery:
+    build: .
+    container_name: cromo_celery
+    command: celery -A cromo worker --concurrency=1 --loglevel=info
+    volumes:
+      - .:/workspace
+    depends_on:
+      - web
+      - redis
+    env_file:
+      - .env
+
+  # celery-beat:
+  #   build: .
+  #   container_name: cromo_celery_beat
+  #   command: celery -A cromo beat --loglevel=info
+  #   volumes:
+  #     - .:/workspace
+  #   depends_on:
+  #     - web
+  #     - redis
+  #   env_file:
+  #     - .env
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - minio_data:/data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb --quiet myminio/${AWS_STORAGE_BUCKET_NAME};
+      /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME};
+      "
+    
+  # full_gaussian_pipe:
+  #   image: atermoros/nerfstudio-mast3r:latest
+  #   container_name: full_gaussian_pipe
+  #   gpus: all
+  #   user: root
+  #   shm_size: "48g"	
+  #   ports:
+  #     - "8080:8000"
+    # volumes:
+    #   - ./full_gaussian_pipe:/workspace
+
+volumes:
+  mysql_data:
+  minio_data:

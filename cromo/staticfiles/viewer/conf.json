@@ -1,0 +1,15 @@
+{
+    "camera": {
+      "position": [-0.5130636692047119, -3.4497265815734863, 0.6442071795463562],
+      "target": [-0.49372666880150706, -0.6901236840485461, 2.1665589028798475]
+    },
+    "annotations": [
+      {
+        "name": "annotation1",
+        "position": [-0.0686940997838974, -1.441078782081604, 0.8341890573501587],
+        "title": "Albe???",
+        "text": "<p>E STAMPAT!!!!!!!!!!!!!!</p> <iframe width='560' height='315' src='https://www.youtube.com/embed/4bMOTTJqGgM?si=iKHyeNDmH8qFU0f5' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' referrerpolicy='strict-origin-when-cross-origin' allowfullscreen></iframe>",
+        "cameraPos": [0, 0, 0]
+      }
+    ]
+  }

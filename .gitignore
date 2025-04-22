@@ -1,0 +1,6 @@
+.env
+/cromo/db.sqlite3
+migrations/
+__pycache__/
+images/
+videos/
