@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import pick_data_from_minio, render_xrts_viewer, build, pick_annotation_from_minio, complete_build, list, serve
+from .views import pick_data_from_minio, render_xrts_viewer, build, pick_annotation_from_minio, complete_build, list, serve, add_view
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('list', list, name='list'),
     path('api/token-auth/', obtain_auth_token),
     path('serve', serve, name='serve'),
+    path('add_view', add_view, name='add_view'),
 ]

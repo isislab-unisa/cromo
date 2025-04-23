@@ -6,18 +6,39 @@ from .models import MinioStorage
 from django.http import JsonResponse
 import base64
 from django.http import FileResponse
-from .models import Cromo_POI, MinioStorage
+from .models import Cromo_POI, MinioStorage, Cromo_View
 from django.shortcuts import redirect
 from cromo.tasks import call_api_and_save
 from django.core.mail import send_mail
 import os
 import json
 import io
+import time
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+import base64
+import uuid
+from django.core.files.base import ContentFile
+def get_base64_extension(base64_string):
+    if ';base64,' in base64_string:
+        header = base64_string.split(';base64,')[0]
+        mime_type = header.split(':')[-1]  # e.g., 'image/png'
+        extension = mime_type.split('/')[-1]  # e.g., 'png'
+        return extension
+    return None
 
+def save_base64_image_to_model(base64_data, instance, field_name='image'):
+    # Format: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+    format, imgstr = base64_data.split(';base64,')  # split the header
+    ext = format.split('/')[-1]
+
+    file_name = f"{uuid.uuid4()}.{ext}"
+    image_data = ContentFile(base64.b64decode(imgstr), name=file_name)
+
+    setattr(instance, field_name, image_data)
+    instance.save()
 
 @login_required
 @require_http_methods(['GET'])
@@ -185,4 +206,29 @@ def serve(request):
     response = FileResponse(buffer, as_attachment=True, filename=f"view_{poi_id}.json")
     response['Content-Type'] = 'application/json'
     return response
+
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(['POST'])
+def add_view(request):
+    poi_id = request.POST.get('poi_id')
+    tag = request.POST.get("tag")
+    image64 = request.POST.get('poi_view_image')
+    # poi_view_image = base64.b64decode(image64)
+    poi_metadata = request.POST.get('poi_metadata')
+    
+    poi = Cromo_POI.objects.get(pk=poi_id)
+    if poi is None:
+        return JsonResponse({"error": "Cromo POI not found"}, status=404)
+    
+    c = Cromo_View.objects.create(
+        cromo_poi=poi,
+        tag=tag,
+        # image=poi_view_image,
+        metadata=poi_metadata,
+        crowsourced=True
+    )
+    save_base64_image_to_model(image64, c)
+    # c.image.save(f"{time.time()}.{get_base64_extension(image64)}", ContentFile(poi_view_image), save=True)
+    return JsonResponse({"message": "View added successfully"}, status=200)
     

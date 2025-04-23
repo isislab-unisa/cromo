@@ -15,6 +15,13 @@ class TagAdmin(ModelAdmin):
     pass
 admin.site.register(Tag, TagAdmin)
 
+from django.utils.safestring import mark_safe
+
+def get_image_preview_html(img_url):
+    return mark_safe(f'''
+    <img src="{img_url}" style="max-width:200px;cursor:pointer"
+         onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
+    ''')
 
 class Cromo_View_Inline(TabularInline):
     model = Cromo_View
@@ -26,7 +33,8 @@ class Cromo_View_Inline(TabularInline):
         if obj.image:
             from django.utils.html import format_html
             link = obj.image.url.replace("minio", "localhost")
-            return format_html('<img src="{}" style="max-height: 100px;" />', link)
+            # return format_html('<img src="{}" style="max-width:200px;cursor:pointer" onclick="(function(s){let m=document.createElement(\'div\');m.style=\'position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;\';;let i=document.createElement(\'img\');i.src=s;i.style=\'max-width:90%;max-height:90%;box-shadow:0 0 20px \\#000\';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)})(this.src)" />', link)
+            return get_image_preview_html(link)
         return obj.image.url
     image_preview.short_description = 'Preview'
     
