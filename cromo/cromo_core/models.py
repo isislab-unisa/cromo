@@ -95,8 +95,13 @@ class Cromo_View(models.Model):
     tag = models.CharField(max_length=200)
     image = models.ImageField(upload_to=upload_to_poi, storage=MinioStorage(), null=True, blank=True)
     cromo_poi = models.ForeignKey(Cromo_POI, on_delete=models.CASCADE, related_name="images")
-    # metadata = JSONField(schema=ITEMS_SCHEMA, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    crowsourced = models.BooleanField(default=False)
+    metadata = models.JSONField(null=True, blank=True)
     
     class Meta:
         verbose_name = "Cromo View"
         verbose_name_plural = "Cromo Views"
+    
+    def __str__(self):
+        return self.tag

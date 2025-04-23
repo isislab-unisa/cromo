@@ -6,11 +6,18 @@ from .models import MinioStorage
 from django.http import JsonResponse
 import base64
 from django.http import FileResponse
-from .models import Cromo_POI
+from .models import Cromo_POI, MinioStorage
 from django.shortcuts import redirect
 from cromo.tasks import call_api_and_save
 from django.core.mail import send_mail
 import os
+import json
+import io
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+
 
 @login_required
 @require_http_methods(['GET'])
@@ -103,4 +110,79 @@ def complete_build(request):
             os.environ.get('EMAIL_HOST_USER'),
             [cromo_poi.user.email],
             fail_silently=False,
-        )    
+        )   
+
+# @csrf_exempt
+# @require_http_methods(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(['POST'])
+def list(request):
+    
+    cromo_pois = Cromo_POI.objects.filter(status="READY")
+    features = []
+    
+    for poi in cromo_pois:
+        poi_id = poi.id
+        title = poi.title
+        location = poi.location
+        cromo_views = poi.images.all()
+        l = location.split(",")
+        lat, lng = l[0], l[1]
+        feature = {
+            "type": "Feature",
+            "properties": {
+                "id": poi_id,
+                "title": title,
+                "cromo_views": len(cromo_views)
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [lng, lat]
+            }
+        }
+        features.append(feature)
+    
+    geojson = {
+        "type": "FeatureCollection",
+        "features": features
+    }
+    
+    buffer = io.BytesIO()
+    buffer.write(json.dumps(geojson).encode('utf-8'))
+    buffer.seek(0)
+
+    response = FileResponse(buffer, as_attachment=True, filename="list.json")
+    response['Content-Type'] = 'application/json'
+    return response
+    
+    # return JsonResponse(geojson)
+    
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@api_view(['POST'])
+def serve(request):
+    poi_id = request.POST.get('poi_id')
+    poi_view_image = request.POST.get('poi_view_image')
+    poi_view_image = base64.b64decode(poi_view_image)
+    
+    # Invoco servizio per riconoscere il tag
+    poi = Cromo_POI.objects.get(pk=poi_id)
+    images = poi.images.all().first()
+    
+    tag = images.tag
+    with images.image.open('rb') as img_file:
+        view = base64.b64encode(img_file.read()).decode('utf-8')
+    res = {
+        "tag": tag,
+        "view": view
+    }
+    
+    buffer = io.BytesIO()
+    buffer.write(json.dumps(res).encode('utf-8'))
+    buffer.seek(0)
+
+    response = FileResponse(buffer, as_attachment=True, filename=f"view_{poi_id}.json")
+    response['Content-Type'] = 'application/json'
+    return response
+    

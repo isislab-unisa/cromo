@@ -5,6 +5,8 @@ import json
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage 
 from .models import MinioStorage
+from location_field.widgets import LocationWidget
+from location_field.models.plain import PlainLocationField
 # from leaflet.forms.widgets import LeafletWidget
 # from django import forms
 # from unfold.forms import FormLayout, FormFieldset
@@ -17,7 +19,17 @@ admin.site.register(Tag, TagAdmin)
 class Cromo_View_Inline(TabularInline):
     model = Cromo_View
     extra = 1
-
+    readonly_fields = [ 'crowsourced', 'timestamp', 'image_preview', 'metadata']
+    list_display = ( 'image_preview', 'tag', 'image')
+    fields = ['crowsourced', 'timestamp', 'image_preview', 'tag', 'image', 'metadata']
+    def image_preview(self, obj):
+        if obj.image:
+            from django.utils.html import format_html
+            link = obj.image.url.replace("minio", "localhost")
+            return format_html('<img src="{}" style="max-height: 100px;" />', link)
+        return obj.image.url
+    image_preview.short_description = 'Preview'
+    
 admin.site.register(Cromo_View)
 
 def generate_data_json(instance):
@@ -35,12 +47,12 @@ def generate_data_json(instance):
         
 class Cromo_POIAdmin(ModelAdmin):
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
+    readonly_fields = ['status']
     list_filter = ('status', 'user')
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
     inlines = [Cromo_View_Inline]
-    from location_field.widgets import LocationWidget
-    from location_field.models.plain import PlainLocationField
+    
     formfield_overrides = {
         PlainLocationField: {"widget": LocationWidget},
     }
@@ -52,10 +64,10 @@ class Cromo_POIAdmin(ModelAdmin):
         return qs.filter(user=request.user)
 
     def get_fields(self, request, obj=None):
-        fields = ['title', 'location']
+        fields = ['title', 'location', 'status']
 
-        if obj and request.user.is_superuser:
-            fields.append('status')
+        # if obj and request.user.is_superuser:
+        #     fields.append('status')
 
         # if request.user.is_superuser:
         #     fields.append('user')

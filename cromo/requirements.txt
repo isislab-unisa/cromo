@@ -16,3 +16,4 @@ pip-system-certs
 django-jsonform
 # django-map-widgets
 django-location-field
+djangorestframework

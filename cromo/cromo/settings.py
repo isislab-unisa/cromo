@@ -61,6 +61,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'rest_framework.authtoken',
     'location_field.apps.DefaultConfig',
     # "django_jsonform",
     "unfold",  # before django.contrib.admin
@@ -94,6 +96,15 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'cromo.urls'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 10 GB
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
+}
 
 LOCATION_FIELD = {
     "provider": "openstreetmap",
