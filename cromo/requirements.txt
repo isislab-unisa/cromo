@@ -17,3 +17,4 @@ django-jsonform
 # django-map-widgets
 django-location-field
 djangorestframework
+drf-yasg

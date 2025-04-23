@@ -21,6 +21,7 @@ from rest_framework.authentication import TokenAuthentication
 import base64
 import uuid
 from django.core.files.base import ContentFile
+
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
         header = base64_string.split(';base64,')[0]

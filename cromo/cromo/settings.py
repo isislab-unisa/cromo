@@ -61,6 +61,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
     'location_field.apps.DefaultConfig',
