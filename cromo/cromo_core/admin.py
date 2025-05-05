@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cromo_POI, Tag, Cromo_View
+from .models import Cromo_POI, Tag, Cromo_View, Cromo_Image
 from unfold.admin import ModelAdmin, TabularInline
 import json
 from django.core.files.base import ContentFile
@@ -7,15 +7,13 @@ from django.core.files.storage import default_storage
 from .models import MinioStorage
 from location_field.widgets import LocationWidget
 from location_field.models.plain import PlainLocationField
-# from leaflet.forms.widgets import LeafletWidget
-# from django import forms
-# from unfold.forms import FormLayout, FormFieldset
+from django.utils.safestring import mark_safe
+import nested_admin
 
 class TagAdmin(ModelAdmin):
     pass
 admin.site.register(Tag, TagAdmin)
 
-from django.utils.safestring import mark_safe
 
 def get_image_preview_html(img_url):
     return mark_safe(f'''
@@ -23,37 +21,45 @@ def get_image_preview_html(img_url):
          onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
     ''')
 
-class Cromo_View_Inline(TabularInline):
+class Cromo_Image_Inline(nested_admin.NestedTabularInline):
+    model = Cromo_Image
+    extra = 1
+    fields = ['image']
+
+admin.site.register(Cromo_Image)
+
+class Cromo_View_Inline(nested_admin.NestedTabularInline):
     model = Cromo_View
     extra = 1
-    readonly_fields = [ 'crowsourced', 'timestamp', 'image_preview', 'metadata']
-    list_display = ( 'image_preview', 'tag', 'image')
-    fields = ['crowsourced', 'timestamp', 'image_preview', 'tag', 'image', 'metadata']
-    def image_preview(self, obj):
-        if obj.image:
-            from django.utils.html import format_html
-            link = obj.image.url.replace("minio", "localhost")
-            # return format_html('<img src="{}" style="max-width:200px;cursor:pointer" onclick="(function(s){let m=document.createElement(\'div\');m.style=\'position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;\';;let i=document.createElement(\'img\');i.src=s;i.style=\'max-width:90%;max-height:90%;box-shadow:0 0 20px \\#000\';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)})(this.src)" />', link)
-            return get_image_preview_html(link)
-        return obj.image.url
-    image_preview.short_description = 'Preview'
+    readonly_fields = [ 'crowsourced', 'timestamp', 'metadata']
+    list_display = ( 'tag')
+    fields = ['crowsourced', 'timestamp', 'tag', 'metadata']
+    inlines = [Cromo_Image_Inline]
+    
+    # def image_preview(self, obj):
+    #     if obj.image:
+    #         from django.utils.html import format_html
+    #         link = obj.image.url.replace("minio", "localhost")
+    #         return get_image_preview_html(link)
+    #     return obj.image.url
+    # image_preview.short_description = 'Preview'
     
 admin.site.register(Cromo_View)
 
-def generate_data_json(instance):
-    storage = MinioStorage()
-    images = instance.images.all()
-    data = [{
-        "cromo_view_tag":img.tag,
-        "url": img.image.url,
-        "file_name": img.image.name,
-    } for img in images]
-    content = json.dumps(data, indent=2)
-    file = ContentFile(content.encode('utf-8'))
-    file_name = f"{instance.id}/data.json"
-    storage.save(file_name, file)
+# def generate_data_json(instance):
+#     storage = MinioStorage()
+#     images = instance.images.all()
+#     data = [{
+#         "cromo_view_tag":img.tag,
+#         "url": img.image.url,
+#         "file_name": img.image.name,
+#     } for img in images]
+#     content = json.dumps(data, indent=2)
+#     file = ContentFile(content.encode('utf-8'))
+#     file_name = f"{instance.id}/data.json"
+#     storage.save(file_name, file)
         
-class Cromo_POIAdmin(ModelAdmin):
+class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
     readonly_fields = ['status']
     list_filter = ('status', 'user')
@@ -102,7 +108,7 @@ class Cromo_POIAdmin(ModelAdmin):
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         cromo_poi = form.instance
-        generate_data_json(cromo_poi)
+        # generate_data_json(cromo_poi)
     
     
 admin.site.register(Cromo_POI, Cromo_POIAdmin)

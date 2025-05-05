@@ -12,21 +12,21 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data_cromo:/var/lib/mysql
 
   web:
     build: .
     container_name: cromo
-    command: ["gunicorn", "--bind", "0.0.0.0:8000", "cromo.wsgi:application"]
     volumes:
       - .:/workspace
     expose:
-      - 8000
+      - 8001
     depends_on:
       - db
       - redis
     env_file:
       - .env
+    restart: always
 
   celery:
     build: .
@@ -40,17 +40,17 @@ services:
     env_file:
       - .env
 
-  # celery-beat:
-  #   build: .
-  #   container_name: cromo_celery_beat
-  #   command: celery -A cromo beat --loglevel=info
-  #   volumes:
-  #     - .:/workspace
-  #   depends_on:
-  #     - web
-  #     - redis
-  #   env_file:
-  #     - .env
+  celery-beat:
+    build: .
+    container_name: cromo_celery_beat
+    command: celery -A cromo beat --loglevel=info
+    volumes:
+      - .:/workspace
+    depends_on:
+      - web
+      - redis
+    env_file:
+      - .env
 
   redis:
     image: redis:7
@@ -88,23 +88,28 @@ services:
     env_file:
       - .env
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
-      /usr/bin/mc mb --quiet myminio/${AWS_STORAGE_BUCKET_NAME};
-      /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME};
-      "
+      /bin/sh -c '
+      until /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+        echo "Waiting for MinIO to be ready...";
+        sleep 3;
+      done;
+      /usr/bin/mc mb --quiet myminio/${AWS_STORAGE_BUCKET_NAME} || true;
+      /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
+      '
     
   # full_gaussian_pipe:
   #   image: atermoros/nerfstudio-mast3r:latest
   #   container_name: full_gaussian_pipe
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
   #   gpus: all
   #   user: root
   #   shm_size: "48g"	
   #   ports:
-  #     - "8080:8000"
-    # volumes:
-    #   - ./full_gaussian_pipe:/workspace
+  #     - "8090:8090"
+  #   volumes:
+  #     - ./full_gaussian_pipe:/workspace
 
 volumes:
-  mysql_data:
+  mysql_data_cromo:
   minio_data:

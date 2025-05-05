@@ -18,3 +18,4 @@ django-jsonform
 django-location-field
 djangorestframework
 drf-yasg
+django-nested-admin

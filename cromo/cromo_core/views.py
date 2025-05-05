@@ -1,6 +1,5 @@
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from django.http import HttpResponse, Http404
 from django.shortcuts import render
 from .models import MinioStorage
 from django.http import JsonResponse
@@ -13,8 +12,6 @@ from django.core.mail import send_mail
 import os
 import json
 import io
-import time
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
@@ -25,14 +22,13 @@ from django.core.files.base import ContentFile
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
         header = base64_string.split(';base64,')[0]
-        mime_type = header.split(':')[-1]  # e.g., 'image/png'
-        extension = mime_type.split('/')[-1]  # e.g., 'png'
+        mime_type = header.split(':')[-1]
+        extension = mime_type.split('/')[-1]
         return extension
     return None
 
 def save_base64_image_to_model(base64_data, instance, field_name='image'):
-    # Format: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
-    format, imgstr = base64_data.split(';base64,')  # split the header
+    format, imgstr = base64_data.split(';base64,')
     ext = format.split('/')[-1]
 
     file_name = f"{uuid.uuid4()}.{ext}"
@@ -97,8 +93,7 @@ def render_xrts_viewer(request):
 def build(request):
     cromo_poi_id = request.POST.get('poi_id')
     cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
-    value = request.POST.get('training_type')
-    call_api_and_save.apply_async(args=[cromo_poi.id, value], queue='api_tasks')
+    call_api_and_save.apply_async(args=[cromo_poi.id], queue='api_tasks')
     
     return redirect('/admin/')
 
@@ -111,7 +106,7 @@ def complete_build(request):
     if status == "COMPLETED":
         cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
         cromo_poi.ref_ply = ply_path
-        cromo_poi.status = "BUILDED"
+        cromo_poi.status = "BUILT"
         cromo_poi.save()
         
         send_mail(

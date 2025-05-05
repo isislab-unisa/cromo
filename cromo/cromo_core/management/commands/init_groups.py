@@ -28,6 +28,8 @@ class Command(BaseCommand):
         ]
 
         author_group.permissions.set(cromo_poi_perms + tag_perms)
-        student_group.permissions.set([Permission.objects.get(codename='view_cromo_poi', content_type=cromo_poi_perms)])
+        student_group.permissions.set([
+            Permission.objects.get(codename='view_cromo_poi', content_type=cromo_poi_ct)
+        ])
 
         self.stdout.write(self.style.SUCCESS('Gruppi e permessi creati con successo.'))

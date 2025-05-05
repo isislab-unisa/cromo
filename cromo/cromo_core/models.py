@@ -33,7 +33,7 @@ class Status(models.TextChoices):
     READY = "READY", "Ready"
     FAILED = "FAILED", "Failed"
     BUILDING = "BUILDING", "Building"
-    BUILDED = "BUILDED", "Builded"
+    BUILT = "BUILT", "Built"
     SERVING = "SERVING", "Serving"
 
 class Cromo_POI(models.Model):
@@ -47,6 +47,7 @@ class Cromo_POI(models.Model):
         default=Status.READY
     )
     location = PlainLocationField(zoom=7, null=True, blank=True)
+    build_started_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "Cromo_POI"
@@ -82,9 +83,11 @@ class Cromo_POI(models.Model):
         super().save(*args, **kwargs)
 
 def upload_to_poi(instance, file_name):
-    poi_id = instance.cromo_poi.id
-    return f"{poi_id}/{file_name}"
-    
+    poi_id = instance.cromo_view.cromo_poi.id
+    tag = instance.cromo_view.tag.replace(" ", "_")
+    return f"{poi_id}/{tag}/{file_name}"
+
+
 class Cromo_View(models.Model):
     # ITEMS_SCHEMA = {
     #     'type': 'array', # a list which will contain the items
@@ -93,7 +96,7 @@ class Cromo_View(models.Model):
     #     }
     # }
     tag = models.CharField(max_length=200)
-    image = models.ImageField(upload_to=upload_to_poi, storage=MinioStorage(), null=True, blank=True)
+    # image = models.ImageField(upload_to=upload_to_poi, storage=MinioStorage(), null=True, blank=True)
     cromo_poi = models.ForeignKey(Cromo_POI, on_delete=models.CASCADE, related_name="images")
     timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     crowsourced = models.BooleanField(default=False)
@@ -105,3 +108,10 @@ class Cromo_View(models.Model):
     
     def __str__(self):
         return self.tag
+
+class Cromo_Image(models.Model):
+    cromo_view = models.ForeignKey(Cromo_View, related_name='images', on_delete=models.CASCADE, null=True, blank=True)
+    image = models.ImageField(upload_to=upload_to_poi, storage=MinioStorage(), null=True, blank=True)
+    
+    def __str__(self):
+        return f"Image for {self.cromo_view.tag}"
