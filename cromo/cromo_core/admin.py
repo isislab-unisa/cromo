@@ -21,14 +21,14 @@ def get_image_preview_html(img_url):
          onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
     ''')
 
-class Cromo_Image_Inline(nested_admin.NestedTabularInline):
+class Cromo_Image_Inline(nested_admin.NestedStackedInline):
     model = Cromo_Image
     extra = 1
     fields = ['image']
 
 admin.site.register(Cromo_Image)
 
-class Cromo_View_Inline(nested_admin.NestedTabularInline):
+class Cromo_View_Inline(nested_admin.NestedStackedInline):
     model = Cromo_View
     extra = 1
     readonly_fields = [ 'crowsourced', 'timestamp', 'metadata']

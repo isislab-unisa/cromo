@@ -61,12 +61,13 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",  # before django.contrib.admin
+    'cromo_core',
     'drf_yasg',
     'rest_framework',
     'rest_framework.authtoken',
     'location_field.apps.DefaultConfig',
     # "django_jsonform",
-    "unfold",  # before django.contrib.admin
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
     "unfold.contrib.inlines",  # optional, if special inlines are needed
@@ -81,7 +82,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cromo_core',
     'nested_admin',
     'django_celery_beat',
 ]
