@@ -36,6 +36,12 @@ class Status(models.TextChoices):
     BUILT = "BUILT", "Built"
     SERVING = "SERVING", "Serving"
 
+class CromoPOIQuerySet(models.QuerySet):
+    def delete(self, *args, **kwargs):
+        for obj in self:
+            obj.delete()
+        super().delete(*args, **kwargs)
+
 class Cromo_POI(models.Model):
     title = models.CharField(max_length=64)
     creation_time = models.DateTimeField(auto_now_add=True)
@@ -48,6 +54,7 @@ class Cromo_POI(models.Model):
     )
     location = PlainLocationField(zoom=7, null=True, blank=True)
     build_started_at = models.DateTimeField(null=True, blank=True)
+    objects = CromoPOIQuerySet.as_manager()
 
     class Meta:
         db_table = "Cromo_POI"
@@ -60,9 +67,22 @@ class Cromo_POI(models.Model):
 
     def __str__(self):
         return self.title
-
+    
     def get_folder_name(self):
         return f"{self.pk}"
+    
+    def delete(self, *args, **kwargs):
+        folder_name = self.get_folder_name() + "/"
+        storage = MinioStorage()
+        elements = storage.bucket.objects.filter(Prefix=folder_name)
+        try:
+            for k in elements:
+                k.delete()
+        except:
+            objects = list(storage.bucket.objects.all())
+            object_keys = [obj.key for obj in objects]
+            raise Exception(f"La cartella {folder_name} non esiste. Oggetti presenti: {object_keys}")
+        super().delete(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None

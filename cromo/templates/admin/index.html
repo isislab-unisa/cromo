@@ -95,6 +95,57 @@
                 {% endcomponent %}
             {% endfor %}
         {% endcomponent %}
+        
+        <!-- Tabella POI -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full table-auto responsive-table">
+                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Titolo</th>
+                        <th class="px-4 py-2 text-left">Utente</th>
+                        <th class="px-4 py-2 text-left">Stato</th>
+                        <th class="px-4 py-2 text-left">Azione</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for poi in cromo_pois %}
+                        <tr class="border-b dark:border-gray-700">
+                            <td class="px-4 py-2" data-label="Titolo">{{ poi.title }}</td>
+                            <td class="px-4 py-2" data-label="Utente">{{ poi.user|default:"-" }}</td>
+                            <td class="px-4 py-2" data-label="Stato">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                    {% if poi.status == 'READY' %}
+                                        bg-green-100 text-green-800
+                                    {% elif poi.status == 'FAILED' %}
+                                        bg-red-100 text-red-800
+                                    {% elif poi.status == 'BUILDING' %}
+                                        bg-yellow-100 text-yellow-800
+                                    {% else %}
+                                        bg-gray-100 text-gray-800
+                                    {% endif %}
+                                ">
+                                    {{ poi.status }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2" data-label="Azione">
+                                {% if poi.status == 'READY' %}
+                                    <form method="post" action="{% url 'build' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="poi_id" value="{{ poi.pk }}">
+                                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded">
+                                            Build
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-gray-400 text-sm">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
 
     {% endcomponent %}
 {% endblock %}

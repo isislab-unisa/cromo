@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'cromo_core',
     'nested_admin',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -95,6 +96,21 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
 
 ROOT_URLCONF = 'cromo.urls'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 10 GB
@@ -119,16 +135,20 @@ LOCATION_FIELD = {
 
 
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
         },
     },
-    "root": {
-        "handlers": ["console"],
-        "level": "WARNING",
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
 

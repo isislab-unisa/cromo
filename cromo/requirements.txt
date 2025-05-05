@@ -19,3 +19,5 @@ django-location-field
 djangorestframework
 drf-yasg
 django-nested-admin
+django-redis
+django-celery-beat

@@ -94,7 +94,6 @@ def build(request):
     cromo_poi_id = request.POST.get('poi_id')
     cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
     call_api_and_save.apply_async(args=[cromo_poi.id], queue='api_tasks')
-    
     return redirect('/admin/')
 
 @require_http_methods(['POST'])
