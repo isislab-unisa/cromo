@@ -105,9 +105,17 @@ class Cromo_POI(models.Model):
 def upload_to_poi(instance, file_name):
     poi_id = instance.cromo_view.cromo_poi.id
     tag = instance.cromo_view.tag.replace(" ", "_")
-    return f"{poi_id}/{tag}/{file_name}"
-
-
+    storage = MinioStorage()
+    elements = storage.bucket.objects.filter(Prefix=f"{poi_id}/data/{tag}/test")
+    c = 0
+    for k in elements:
+        c += 1
+    
+    if c == 0:
+        return f"{poi_id}/data/{tag}/test/{file_name}"
+    else:
+        return f"{poi_id}/data/{tag}/train/{file_name}"
+        
 class Cromo_View(models.Model):
     # ITEMS_SCHEMA = {
     #     'type': 'array', # a list which will contain the items
