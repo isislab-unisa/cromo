@@ -97,18 +97,26 @@ services:
       /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       '
     
-  # full_gaussian_pipe:
-  #   image: atermoros/nerfstudio-mast3r:latest
-  #   container_name: full_gaussian_pipe
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #   gpus: all
-  #   user: root
-  #   shm_size: "48g"	
-  #   ports:
-  #     - "8090:8090"
-  #   volumes:
-  #     - ./full_gaussian_pipe:/workspace
+  ai_training:
+    image: atermoros/cromo_ai_classification:training
+    container_name: ai_training
+    environment:
+      - PYTHONUNBUFFERED=1
+    gpus: all
+    user: root
+    ports:
+      - "8090:8090"
+
+  ai_inference:
+    image: atermoros/cromo_ai_classification:inference
+    container_name: ai_inference
+    environment:
+      - PYTHONUNBUFFERED=1
+    gpus: all
+    user: root
+    ports:
+      - "8050:8050"
+
 
 volumes:
   mysql_data_cromo:
