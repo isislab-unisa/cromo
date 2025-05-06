@@ -45,7 +45,7 @@ class CromoPOIQuerySet(models.QuerySet):
 class Cromo_POI(models.Model):
     title = models.CharField(max_length=64)
     creation_time = models.DateTimeField(auto_now_add=True)
-    tag = models.ManyToManyField('Tag')
+    # tag = models.ManyToManyField('Tag')
     user = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(
         max_length=20,
@@ -115,7 +115,10 @@ def upload_to_poi(instance, file_name):
         return f"{poi_id}/data/{tag}/test/{file_name}"
     else:
         return f"{poi_id}/data/{tag}/train/{file_name}"
-        
+
+def default_image(instance, file_name):
+    return f"{instance.cromo_poi.id}/default_image/{file_name}"
+
 class Cromo_View(models.Model):
     # ITEMS_SCHEMA = {
     #     'type': 'array', # a list which will contain the items
@@ -124,11 +127,13 @@ class Cromo_View(models.Model):
     #     }
     # }
     tag = models.CharField(max_length=200)
-    # image = models.ImageField(upload_to=upload_to_poi, storage=MinioStorage(), null=True, blank=True)
     cromo_poi = models.ForeignKey(Cromo_POI, on_delete=models.CASCADE, related_name="images")
     timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     crowsourced = models.BooleanField(default=False)
     metadata = models.JSONField(null=True, blank=True)
+    model_path = models.CharField(max_length=200, null=True, blank=True)
+    build_started_at = models.DateTimeField(null=True, blank=True)
+    default_image = models.ImageField(upload_to=default_image, storage=MinioStorage(), null=True, blank=True)
     
     class Meta:
         verbose_name = "Cromo View"

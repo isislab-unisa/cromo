@@ -17,6 +17,7 @@ django-jsonform
 # django-map-widgets
 django-location-field
 djangorestframework
+djangorestframework-simplejwt
 drf-yasg
 django-nested-admin
 django-redis

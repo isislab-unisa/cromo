@@ -61,11 +61,11 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'rest_framework.authtoken',
     "unfold",  # before django.contrib.admin
     'cromo_core',
     'drf_yasg',
-    'rest_framework',
-    'rest_framework.authtoken',
     'location_field.apps.DefaultConfig',
     # "django_jsonform",
     "unfold.contrib.filters",  # optional, if special filters are needed
@@ -117,12 +117,15 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 * 10  # 10 GB
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
 }
+
+# CSRF_COOKIE_SECURE = False
 
 LOCATION_FIELD = {
     "provider": "openstreetmap",

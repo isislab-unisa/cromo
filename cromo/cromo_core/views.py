@@ -18,6 +18,8 @@ from rest_framework.authentication import TokenAuthentication
 import base64
 import uuid
 from django.core.files.base import ContentFile
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
@@ -96,21 +98,23 @@ def build(request):
     call_api_and_save.apply_async(args=[cromo_poi.id], queue='api_tasks')
     return redirect('/admin/')
 
-@require_http_methods(['POST'])
+@permission_classes([IsAuthenticated])
+@api_view(['POST'])
 def complete_build(request):
-    status = request.POST.get('status')
+    cromo_title = request.POST.get('poi_name')
     cromo_poi_id = request.POST.get('poi_id')
-    ply_path = request.POST.get('ply_path')
+    model_url = request.POST.get('model_url')
+    status = request.POST.get('status')
     
     if status == "COMPLETED":
         cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
-        cromo_poi.ref_ply = ply_path
+        cromo_poi.model_path = model_url
         cromo_poi.status = "BUILT"
         cromo_poi.save()
         
         send_mail(
-            'Build in corso',
-            f"Lezione {cromo_poi.title} in fase di build.",
+            'Build completata',
+            f"Lezione {cromo_poi.title} buildata.",
             os.environ.get('EMAIL_HOST_USER'),
             [cromo_poi.user.email],
             fail_silently=False,
@@ -121,16 +125,13 @@ def complete_build(request):
         cromo_poi.save()
         
         send_mail(
-            'Build in corso',
-            f"Lezione {cromo_poi.title} in fase di build.",
+            'Build fallita',
+            f"Build Fallita {cromo_poi.title}.",
             os.environ.get('EMAIL_HOST_USER'),
             [cromo_poi.user.email],
             fail_silently=False,
         )   
 
-# @csrf_exempt
-# @require_http_methods(['POST'])
-@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def list(request):
@@ -174,7 +175,6 @@ def list(request):
     
     # return JsonResponse(geojson)
     
-@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def serve(request):
@@ -202,7 +202,6 @@ def serve(request):
     response['Content-Type'] = 'application/json'
     return response
 
-@authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def add_view(request):

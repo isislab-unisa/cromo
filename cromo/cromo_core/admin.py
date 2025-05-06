@@ -33,7 +33,7 @@ class Cromo_View_Inline(nested_admin.NestedStackedInline):
     extra = 1
     readonly_fields = [ 'crowsourced', 'timestamp', 'metadata']
     list_display = ( 'tag')
-    fields = ['crowsourced', 'timestamp', 'tag', 'metadata']
+    fields = ['crowsourced', 'timestamp', 'tag', 'metadata', 'default_image']
     inlines = [Cromo_Image_Inline]
     
     # def image_preview(self, obj):
@@ -61,7 +61,7 @@ admin.site.register(Cromo_View)
         
 class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
-    readonly_fields = ['status']
+    readonly_fields = ['status', 'user', 'creation_time']
     list_filter = ('status', 'user')
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
@@ -80,29 +80,23 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     def get_fields(self, request, obj=None):
         fields = ['title', 'location', 'status']
 
-        # if obj and request.user.is_superuser:
-        #     fields.append('status')
-
-        # if request.user.is_superuser:
-        #     fields.append('user')
-
         return fields
 
-    def get_readonly_fields(self, request, obj=None):
-        base = super().get_readonly_fields(request, obj)
-        if not request.user.is_superuser:
-            return base + ('user',)
-        return base
+    # def get_readonly_fields(self, request, obj=None):
+    #     base = super().get_readonly_fields(request, obj)
+    #     if not request.user.is_superuser:
+    #         return base + ('user',)
+    #     return base
 
     def save_model(self, request, obj, form, change):
-        if not request.user.is_superuser and not obj.user:
+        if not change:
             obj.user = request.user
         super().save_model(request, obj, form, change)
 
     def get_changeform_initial_data(self, request):
         initial = super().get_changeform_initial_data(request)
-        if not request.user.is_superuser:
-            initial['user'] = request.user.pk
+        # if not request.user.is_superuser:
+        initial['user'] = request.user.pk
         return initial
     
     def save_related(self, request, form, formsets, change):
