@@ -39,7 +39,6 @@ class Response(BaseModel):
 
 class Request(BaseModel):
     data_url: str | None = None
-    inference_image: str | None = None
     model_url: str | None = None
     poi_name: str | None = None
     poi_id: str | None = None
@@ -252,26 +251,6 @@ def run_train(request: Request, view_dir: str, data_path: str):
         except requests.RequestException as e:
             print(f"Error sending callback: {e}")
 
-def run_inference_subproc(
-    input_dir: str,
-    model_path: str,
-):
-    try:
-        cmd = [
-            "python",
-            "inference_script.py",
-            "--image-path",
-            input_dir,
-            "--checkpoint",
-            model_path,
-        ]
-        print("Running command:", " ".join(cmd))
-
-        result = subprocess.run(cmd, check=True, capture_output=True)
-        return result
-    except Exception as e:
-        print(f"Inference failed: {e}")
-
 @app.get("/")
 async def read_root():
     return {"Hello": "World"}
@@ -308,61 +287,3 @@ async def train_model(request: Request) -> Response:
     except Exception as e:
         raise CustomHTTPException(status_code=500, detail=str(e), error_code=1001)
     
-    
-@app.post("/inference")
-async def inference(request: Request) -> Response:
-    try:
-        print(f"REQUEST: {request}")
-        #DOWNLOAD REQUESTED MODEL FROM MINIO
-        model, key = read_s3_file(request.model_url)
-        if model is None:
-            raise CustomHTTPException(
-                status_code=404,
-                detail="Model not found",
-                error_code=1003,
-            )
-        #SAVE MODEL LOCALLY
-        model_path = os.path.join("/models", request.poi_name)
-        os.makedirs(model_path, exist_ok=True)
-        with open(os.path.join(model_path, "model.pth"), "wb") as f:
-            f.write(model)
-        print("MODEL DOWNLOADED")
-        
-        #CONVERT REQUEST IMAGE FROM BASE64 TO JPG
-        input_image = request.inference_image
-        if input_image is None:
-            raise CustomHTTPException(
-                status_code=404,
-                detail="Image not found",
-                error_code=1004,
-            )
-        input_image = base64.b64decode(input_image)
-        #SAVE IMAGE LOCALLY
-        data_path = os.path.join("/data", request.poi_name)
-        os.makedirs(data_path, exist_ok=True)
-        with open(os.path.join(data_path, "input_image.jpg"), "wb") as f:
-            f.write(input_image)
-        print("DATA DOWNLOADED")
-        
-        #RUN INFERENCE
-        result = run_inference_subproc(
-            input_dir=os.path.join(data_path, "input_image.jpg"),
-            model_path=os.path.join(model_path, "model.pth"),
-        )
-        
-        print("INFERENCE DONE")
-        
-        #REMOVE FOLDER
-        shutil.rmtree("/data", ignore_errors=True)
-        
-        return Response(
-            model_url="",
-            report_url="",
-            view_name=request.view_name,
-            poi_id=request.poi_id,
-            message=f"{result}",
-        )
-        
-
-    except Exception as e:
-        raise CustomHTTPException(status_code=500, detail=str(e), error_code=1001)
