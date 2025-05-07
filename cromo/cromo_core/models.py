@@ -107,15 +107,15 @@ def upload_to_poi(instance, file_name):
     poi_id = instance.cromo_view.cromo_poi.id
     tag = instance.cromo_view.tag.replace(" ", "_")
     storage = MinioStorage()
-    elements = storage.bucket.objects.filter(Prefix=f"{poi_id}/data/{tag}/test")
+    elements = storage.bucket.objects.filter(Prefix=f"{poi_id}/data/test/{tag}/")
     c = 0
     for k in elements:
         c += 1
     
     if c == 0:
-        return f"{poi_id}/data/{tag}/test/{file_name}"
+        return f"{poi_id}/data/test/{tag}/{file_name}"
     else:
-        return f"{poi_id}/data/{tag}/train/{file_name}"
+        return f"{poi_id}/data/train/{tag}/{file_name}"
 
 def default_image(instance, file_name):
     return f"{instance.cromo_poi.id}/default_image/{instance.tag}/{file_name}"
