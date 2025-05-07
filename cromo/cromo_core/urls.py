@@ -7,9 +7,9 @@ from rest_framework import permissions
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="Dummy API",
+      title="Cromo API",
       default_version='v1',
-      description="Dummy description",
+      description="These are the API endpoints for Cromo.",
       terms_of_service="https://www.google.com/policies/terms/",
       contact=openapi.Contact(email="contact@dummy.local"),
       license=openapi.License(name="BSD License"),

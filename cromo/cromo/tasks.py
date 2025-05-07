@@ -42,7 +42,7 @@ def call_api_and_save(self, cromo_poi_id):
             payload = {
                 "poi_name": cromo_poi.title,
                 "poi_id": str(cromo_poi_id),
-                "data_url": f"{cromo_poi_id}/data/{cromo_poi.images.tag}",
+                "data_url": f"{cromo_poi_id}/data/",
             }
 
             # url = f"http://full_gaussian_pipe:8090/extract_ply"
@@ -54,7 +54,6 @@ def call_api_and_save(self, cromo_poi_id):
             
             # Simulazione della build
             print("Simulazione build in corso...")
-            # time.sleep(30)
             
             response = requests.Response()
             response.status_code = 200

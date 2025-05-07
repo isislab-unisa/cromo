@@ -35,6 +35,7 @@ class Status(models.TextChoices):
     BUILDING = "BUILDING", "Building"
     BUILT = "BUILT", "Built"
     SERVING = "SERVING", "Serving"
+    ENQUEUED = "ENQUEUED", "Enqueued"
 
 class CromoPOIQuerySet(models.QuerySet):
     def delete(self, *args, **kwargs):
@@ -117,7 +118,7 @@ def upload_to_poi(instance, file_name):
         return f"{poi_id}/data/{tag}/train/{file_name}"
 
 def default_image(instance, file_name):
-    return f"{instance.cromo_poi.id}/default_image/{file_name}"
+    return f"{instance.cromo_poi.id}/default_image/{instance.tag}/{file_name}"
 
 class Cromo_View(models.Model):
     # ITEMS_SCHEMA = {
