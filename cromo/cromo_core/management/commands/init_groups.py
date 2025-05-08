@@ -1,12 +1,13 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from cromo_core.models import Cromo_POI, Tag
 
 class Command(BaseCommand):
     help = 'Crea i gruppi Author e Student con i permessi associati'
 
     def handle(self, *args, **kwargs):
+        from cromo_core.models import Cromo_POI, Tag
+
         author_group, _ = Group.objects.get_or_create(name='Author')
         student_group, _ = Group.objects.get_or_create(name='Student')
 
