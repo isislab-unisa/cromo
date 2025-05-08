@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.files.storage import default_storage
 import logging
 import dotenv
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -9,6 +8,8 @@ from django.core.files.base import ContentFile
 from django.contrib.gis.db import models as mdl
 # from django_jsonform.models.fields import JSONField
 from location_field.models.plain import PlainLocationField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 dotenv.load_dotenv()
 
@@ -149,3 +150,29 @@ class Cromo_Image(models.Model):
     
     def __str__(self):
         return f"Image for {self.cromo_view.tag}"
+    
+@receiver(post_save, sender=Cromo_Image)
+def sync_test_train_images(sender, instance, created, **kwargs):
+    if not instance.image:
+        return
+
+    # path = instance.image.name
+    storage = MinioStorage()
+    # tag = instance.cromo_view.tag.replace(" ", "_")
+    poi_id = instance.cromo_view.cromo_poi.id
+
+    all_images = Cromo_Image.objects.filter(cromo_view__cromo_poi_id=poi_id)
+    image_count = all_images.count()
+
+    for image in all_images:
+        path = image.image.name
+        if "/test/" in image.image.name:
+            if image_count < 5:
+                train_path = path.replace("/test/", "/train/")
+                if not storage.exists(train_path):
+                    content = storage.open(path).read()
+                    storage.save(train_path, ContentFile(content))
+            else:
+                train_path = path.replace("/test/", "/train/")
+                if storage.exists(train_path):
+                    storage.delete(train_path)
