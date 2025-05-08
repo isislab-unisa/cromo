@@ -169,23 +169,21 @@ def complete_build(request):
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def list(request):
-    
     cromo_pois = Cromo_POI.objects.filter(status="READY")
     features = []
-    
+
     for poi in cromo_pois:
         poi_id = poi.id
         title = poi.title
         location = poi.location
         cromo_views = poi.images.all()
         l = location.split(",")
-        lat, lng = l[0], l[1]
+        lat, lng = float(l[0]), float(l[1])
         feature = {
             "type": "Feature",
             "properties": {
                 "id": poi_id,
-                "title": title,
-                "cromo_views": len(cromo_views)
+                "POI": title
             },
             "geometry": {
                 "type": "Point",
@@ -193,12 +191,19 @@ def list(request):
             }
         }
         features.append(feature)
-    
+
     geojson = {
         "type": "FeatureCollection",
+        "name": "POI CROMO",
+        "crs": {
+            "type": "name",
+            "properties": {
+                "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+            }
+        },
         "features": features
     }
-    
+
     buffer = io.BytesIO()
     buffer.write(json.dumps(geojson).encode('utf-8'))
     buffer.seek(0)
@@ -206,6 +211,7 @@ def list(request):
     response = FileResponse(buffer, as_attachment=True, filename="list.json")
     response['Content-Type'] = 'application/json'
     return response
+
     
     # return JsonResponse(geojson)
 
