@@ -299,4 +299,3 @@ def add_view(request):
     save_base64_image_to_model(image64, c)
     # c.image.save(f"{time.time()}.{get_base64_extension(image64)}", ContentFile(poi_view_image), save=True)
     return JsonResponse({"message": "View added successfully"}, status=200)
-    

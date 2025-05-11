@@ -45,18 +45,18 @@ def call_api_and_save(self, cromo_poi_id):
                 "data_url": f"{cromo_poi_id}/data/",
             }
 
-            # url = f"http://full_gaussian_pipe:8090/extract_ply"
-            # headers = {"Content-type": "application/json"}
-            # response = requests.post(url, headers=headers, json=payload)
+            url = f"http://ai_training:8090/train_model"
+            headers = {"Content-type": "application/json"}
+            response = requests.post(url, headers=headers, json=payload)
             
-            # print("Response status code:", response.status_code)
-            # print(response)
+            print("Response status code:", response.status_code)
+            print(response)
             
             # Simulazione della build
-            print("Simulazione build in corso...")
+            # print("Simulazione build in corso...")
             
-            response = requests.Response()
-            response.status_code = 200
+            # response = requests.Response()
+            # response.status_code = 200
 
             if response.status_code == 200:
                 cromo_poi.status = Status.BUILDING
