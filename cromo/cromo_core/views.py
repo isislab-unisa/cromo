@@ -122,10 +122,10 @@ def build(request):
 @api_view(['POST'])
 def complete_build(request):
     print(f"Request data: {request.POST.get("poi_id")}")
-    cromo_title = request.POST.get('poi_name')
-    cromo_poi_id =request.POST.get('poi_id')
-    model_url = request.POST.get('model_url')
-    status = request.POST.get('status')
+    cromo_title = request.data.get('poi_name')
+    cromo_poi_id =request.data.get('poi_id')
+    model_url = request.data.get('model_url')
+    status = request.data.get('status')
     
     if status == "COMPLETED":
         try:
@@ -144,6 +144,7 @@ def complete_build(request):
             [cromo_poi.user.email],
             fail_silently=False,
         )
+        return JsonResponse({"message": "Build completata"}, status=200)
     else:
         cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
         cromo_poi.status = "FAILED"
@@ -155,7 +156,8 @@ def complete_build(request):
             os.environ.get('EMAIL_HOST_USER'),
             [cromo_poi.user.email],
             fail_silently=False,
-        )   
+        )
+        return JsonResponse({"error": "Cromo POI not found"}, status=404)
 
 @swagger_auto_schema(
     method='post',
