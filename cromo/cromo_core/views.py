@@ -19,6 +19,7 @@ import uuid
 from django.core.files.base import ContentFile
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import requests
 
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
@@ -236,21 +237,35 @@ def list(request):
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def serve(request):
-    poi_id = request.POST.get('poi_id')
-    poi_view_image = request.POST.get('poi_view_image')
-    poi_view_image = base64.b64decode(poi_view_image)
-    
-    # Invoco servizio per riconoscere il tag
+    poi_id = request.data.get('poi_id')
+    poi_view_image = request.data.get('poi_view_image')
+    poi_view_name = request.data.get('poi_view_name')
+
     poi = Cromo_POI.objects.get(pk=poi_id)
-    images = poi.images.all().first()
-    
-    tag = images.tag
-    with images.image.open('rb') as img_file:
-        view = base64.b64encode(img_file.read()).decode('utf-8')
-    res = {
-        "tag": tag,
-        "view": view
+    payload = {
+        "poi_id": poi_id,
+        "inference_image": poi_view_image,
+        "model_url": poi.model_path,
+        "poi_name": poi.title,
+        "view_name": poi_view_name,
     }
+    url = "http://ai_inference:8050/inference"
+    headers = {"Content-type": "application/json"}
+    response = requests.post(url, headers=headers, json=payload)
+
+    # images = poi.images.all().first()
+    # tag = images.tag
+    # with images.image.open('rb') as img_file:
+    #     view = base64.b64encode(img_file.read()).decode('utf-8')
+    
+    if response.status_code == 200:
+        res = {
+            "tag": response.json()['message'],
+        }
+    elif response.status_code == 404:
+        return JsonResponse({"error": "Image not found"}, status=404)
+    else:
+        return JsonResponse({"error": "Error serving image"}, status=500)
     
     buffer = io.BytesIO()
     buffer.write(json.dumps(res).encode('utf-8'))
