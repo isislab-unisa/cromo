@@ -13,13 +13,12 @@ import requests
 import threading
 import subprocess
 import base64
+import dotenv
 
+dotenv.load_dotenv()
 
-MINIO_EDNPOINT = "http://minio:9000"
-MINIO_ROOT_USER = "minioadmin"
-MINIO_ROOT_PASSWORD = "minioadmin123"
-AWS_STORAGE_BUCKET_NAME = "points-of-interests"
-CALLBACK_ENDPOINT = "http://web:8001/complete_build/"
+MINIO_ENDPOINT = "http://minio:9000"
+CALLBACK_ENDPOINT = "http://web:8001/complete_build"
 TOKEN_REQUEST_ENDPOINT = "http://web:8001/api/token/"
 
 
@@ -59,9 +58,9 @@ app = FastAPI()
 
 s3 = boto3.client(
     "s3",
-    endpoint_url=MINIO_EDNPOINT,
-    aws_access_key_id=MINIO_ROOT_USER,
-    aws_secret_access_key=MINIO_ROOT_PASSWORD,
+    endpoint_url=MINIO_ENDPOINT,
+    aws_access_key_id=os.getenv("MINIO_ROOT_USER"),
+    aws_secret_access_key=os.getenv("MINIO_ROOT_PASSWORD"),
 )
 
 #prefix = "root_folder/"
@@ -70,32 +69,41 @@ def download_minio_folder(prefix: str, local_dir: str, s3_client):
     Downloads all objects from `bucket_name` under `prefix` to `local_dir`,
     preserving the folder hierarchy.
     """
-    paginator = s3_client.get_paginator(
-        "list_objects_v2"
-    )  # Handles pagination :contentReference[oaicite:3]{index=3}
-    for page in paginator.paginate(Bucket=AWS_STORAGE_BUCKET_NAME, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            if key.endswith("/"):
-                # Skip zero-byte “folder” markers
-                continue
+    try:
+        paginator = s3_client.get_paginator(
+            "list_objects_v2"
+        )  # Handles pagination :contentReference[oaicite:3]{index=3}
+        for page in paginator.paginate(Bucket=os.getenv("AWS_STORAGE_BUCKET_NAME"), Prefix=prefix):
+            print(f"Page: {page}")
+            for obj in page.get("Contents", []):
+                print(f"Object: {obj}")
+                key = obj["Key"]
+                if key.endswith("/"):
+                    # Skip zero-byte “folder” markers
+                    continue
 
-            # Derive the local path by stripping the prefix
-            rel_path = os.path.relpath(key, prefix)
-            local_path = os.path.join(local_dir, rel_path)
+                # Derive the local path by stripping the prefix
+                rel_path = os.path.relpath(key, prefix)
+                local_path = os.path.join(local_dir, rel_path)
 
-            # Ensure the target directory exists
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                # Ensure the target directory exists
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-            # Download the object to the local path
-            s3_client.download_file(AWS_STORAGE_BUCKET_NAME, key, local_path)
-            print(f"Downloaded {key} → {local_path}")
+                # Download the object to the local path
+                s3_client.download_file(os.getenv("AWS_STORAGE_BUCKET_NAME"), key, local_path)
+                print(f"Downloaded {key} → {local_path}")
+    except Exception as e:
+        print(f"Error downloading folder from S3: {e}")
+        return None
+        
     return local_dir
 
 def read_s3_file(file_name):
     try:
         video_key = file_name
-        response = s3.get_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=video_key)
+        response = s3.get_object(
+            Bucket=os.getenv("AWS_STORAGE_BUCKET_NAME"), Key=video_key
+        )
         print("RESPONSE:" + str(response))
         data = response["Body"].read()
         return data, video_key
@@ -108,7 +116,7 @@ def write_s3_file(file_path, remote_path):
     try:
         s3.upload_file(
             file_path,
-            AWS_STORAGE_BUCKET_NAME,
+            os.getenv("AWS_STORAGE_BUCKET_NAME"),
             remote_path,
         )
         print(f"File {remote_path} written to S3")
@@ -152,11 +160,11 @@ def run_train(request: Request, view_dir: str, data_path: str):
             input_dir=data_path,
             output_dir=view_dir,
             num_epochs=25,
-            run_name=request.view_name,
+            run_name=request.poi_name,
         )
 
-        model_path = os.path.join(view_dir, "model.pth")
-        report_path = os.path.join(view_dir, "probability_table.csv")
+        model_path = os.path.join(view_dir, f"{request.poi_name}/model.pth")
+        report_path = os.path.join(view_dir, f"{request.poi_name}/probability_table.csv")
 
         # LOAD ON MINIO
         write_s3_file(
@@ -195,12 +203,14 @@ def run_train(request: Request, view_dir: str, data_path: str):
         token_access = token_response.json().get("access")
 
         callback_payload = {
-            "view_id": request.lesson_id,
-            "view_name": request.lesson_name,
-            "model_path": f"{request.lesson_name}_{request.lesson_id}/model.pth",
-            "report_path": f"{request.lesson_name}_{request.lesson_id}/report.csv",	
+            "poi_id": int(request.poi_id),
+            "poi_name": request.poi_name,
+            "model_url": f"{request.poi_id}/model.pth",
+            "report_url": f"{request.poi_id}/report.csv",	
             "status": "COMPLETED",
         }
+        
+        print("Callback payload:", callback_payload, flush=True)
 
         headers = {
             "Authorization": f"Bearer {token_access}",
@@ -219,12 +229,14 @@ def run_train(request: Request, view_dir: str, data_path: str):
     except Exception as e:
         print(f"Error processing full pipeline: {e}", flush=True)
         callback_payload = {
-            "view_id": request.lesson_id,
-            "view_name": request.lesson_name,
-            "model_path": None,
-            "report_path": None,
+            "poi_id": int(request.poi_id),
+            "poi_name": request.poi_name,
+            "model_url": "None",
+            "report_url": "None",
             "status": "FAILED",
         }
+        
+        print("Callback payload:", callback_payload, flush=True)
 
         token_payload = {
             "username": "root",
@@ -260,12 +272,19 @@ async def read_root():
 async def train_model(request: Request) -> Response:
     try:
         print(f"REQUEST: {request}")
+
         # CREATE A DIRECTORY FOR THE LESSON
-        view_dir = f"/data/{request.view_name}"
+        view_dir = f"/data/{request.poi_name}"
         os.makedirs(view_dir, exist_ok=True)
         
         # RETRIEVE THE DATA FROM MINIO        
         local_data_path = download_minio_folder(request.data_url, view_dir, s3)
+        if local_data_path is None:
+            raise CustomHTTPException(
+                status_code=404,
+                detail="Data failed to download",
+                error_code=1003,
+            )
         print("DATA DOWNLOADED")
             
         worker_thread = threading.Thread(

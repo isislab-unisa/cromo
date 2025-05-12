@@ -112,6 +112,7 @@ def build(request):
             'poi_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the POI"),
             'poi_name': openapi.Schema(type=openapi.TYPE_STRING, description="Name of the POI"),
             'model_url': openapi.Schema(type=openapi.TYPE_STRING, description="URL of the trained model (required if status is COMPLETED)"),
+            'report_url': openapi.Schema(type=openapi.TYPE_STRING, description="URL of the report (required if status is COMPLETED)"),
             'status': openapi.Schema(type=openapi.TYPE_STRING, description="Build status: 'COMPLETED' or 'FAILED'"),
         }
     ),
@@ -120,14 +121,15 @@ def build(request):
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def complete_build(request):
+    print(f"Request data: {request.POST.get("poi_id")}")
     cromo_title = request.POST.get('poi_name')
-    cromo_poi_id =int(request.POST.get('poi_id'))
+    cromo_poi_id =request.POST.get('poi_id')
     model_url = request.POST.get('model_url')
     status = request.POST.get('status')
     
     if status == "COMPLETED":
         try:
-            cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
+            cromo_poi = Cromo_POI.objects.get(pk=int(cromo_poi_id))
             cromo_poi.model_path = model_url
             cromo_poi.status = "BUILT"
             cromo_poi.save()

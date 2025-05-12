@@ -78,7 +78,7 @@ services:
     command: server /data --console-address ":9001"
     ports:
       - "9001:9001"
-      - "9000:9000"
+      - "9000:9000" # MinIO server API
     volumes:
       - minio_data:/data
 
@@ -98,25 +98,29 @@ services:
       /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       '
     
-  # ai_training:
-  #   image: atermoros/cromo_ai_classification:training
-  #   container_name: ai_training
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #   gpus: all
-  #   user: root
-  #   ports:
-  #     - "8090:8090"
+  ai_training:
+    image: cromo_ai_classification:training
+    container_name: ai_training
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    gpus: all
+    user: root
+    ports:
+      - "8090:8090"
 
-  # ai_inference:
-  #   image: atermoros/cromo_ai_classification:inference
-  #   container_name: ai_inference
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #   gpus: all
-  #   user: root
-  #   ports:
-  #     - "8050:8050"
+  ai_inference:
+    image: atermoros/cromo_ai_classification:inference
+    container_name: ai_inference
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    gpus: all
+    user: root
+    ports:
+      - "8050:8050"
 
 
 volumes:

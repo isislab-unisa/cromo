@@ -13,13 +13,12 @@ import requests
 import threading
 import subprocess
 import base64
+import dotenv
+dotenv.load_dotenv()    
 
 
-MINIO_EDNPOINT = "http://minio:9000"
-MINIO_ROOT_USER = "minioadmin"
-MINIO_ROOT_PASSWORD = "minioadmin123"
-AWS_STORAGE_BUCKET_NAME = "points-of-interests"
-CALLBACK_ENDPOINT = "http://web:8001/complete_build/"
+MINIO_ENDPOINT = "http://minio:9001"
+CALLBACK_ENDPOINT = "http://web:8001/complete_build"
 TOKEN_REQUEST_ENDPOINT = "http://web:8001/api/token/"
 
 
@@ -60,10 +59,11 @@ app = FastAPI()
 
 s3 = boto3.client(
     "s3",
-    endpoint_url=MINIO_EDNPOINT,
-    aws_access_key_id=MINIO_ROOT_USER,
-    aws_secret_access_key=MINIO_ROOT_PASSWORD,
+    endpoint_url=MINIO_ENDPOINT,
+    aws_access_key_id=os.getenv("MINIO_ROOT_USER"),
+    aws_secret_access_key=os.getenv("MINIO_ROOT_PASSWORD"),
 )
+
 
 #prefix = "root_folder/"
 def download_minio_folder(prefix: str, local_dir: str, s3_client):
@@ -74,7 +74,9 @@ def download_minio_folder(prefix: str, local_dir: str, s3_client):
     paginator = s3_client.get_paginator(
         "list_objects_v2"
     )  # Handles pagination :contentReference[oaicite:3]{index=3}
-    for page in paginator.paginate(Bucket=AWS_STORAGE_BUCKET_NAME, Prefix=prefix):
+    for page in paginator.paginate(
+        Bucket=os.getenv("AWS_STORAGE_BUCKET_NAME"), Prefix=prefix
+    ):
         for obj in page.get("Contents", []):
             key = obj["Key"]
             if key.endswith("/"):
@@ -89,14 +91,18 @@ def download_minio_folder(prefix: str, local_dir: str, s3_client):
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
             # Download the object to the local path
-            s3_client.download_file(AWS_STORAGE_BUCKET_NAME, key, local_path)
+            s3_client.download_file(
+                os.getenv("AWS_STORAGE_BUCKET_NAME"), key, local_path
+            )
             print(f"Downloaded {key} → {local_path}")
     return local_dir
 
 def read_s3_file(file_name):
     try:
         video_key = file_name
-        response = s3.get_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=video_key)
+        response = s3.get_object(
+            Bucket=os.getenv("AWS_STORAGE_BUCKET_NAME"), Key=video_key
+        )
         print("RESPONSE:" + str(response))
         data = response["Body"].read()
         return data, video_key
@@ -109,7 +115,7 @@ def write_s3_file(file_path, remote_path):
     try:
         s3.upload_file(
             file_path,
-            AWS_STORAGE_BUCKET_NAME,
+            os.getenv("AWS_STORAGE_BUCKET_NAME"),
             remote_path,
         )
         print(f"File {remote_path} written to S3")

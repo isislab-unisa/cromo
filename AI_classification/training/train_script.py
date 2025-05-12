@@ -220,6 +220,7 @@ def train_model(input_dir, output_dir, num_epochs, run_name, cpu=False):
             "model_state_dict": model.state_dict(),
             "class_names": class_names,
         }, final_model_path)
+        print(f"Final model saved to {final_model_path}")
         model.load_state_dict(torch.load(best_model_params_path))
         
         probability_table = create_probability_table(
@@ -228,6 +229,9 @@ def train_model(input_dir, output_dir, num_epochs, run_name, cpu=False):
         probability_table_path = os.path.join(output_dir, run_name)
         probability_table.to_csv(
             os.path.join(probability_table_path, "probability_table.csv"), index=False
+        )
+        print(
+            f"Probability table saved to {os.path.join(probability_table_path, 'probability_table.csv')}"
         )
     return model
 
