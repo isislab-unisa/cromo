@@ -46,6 +46,7 @@ class CromoPOIQuerySet(models.QuerySet):
 
 class Cromo_POI(models.Model):
     title = models.CharField(max_length=64)
+    model_path = models.CharField(max_length=200, null=True, blank=True)
     creation_time = models.DateTimeField(auto_now_add=True)
     # tag = models.ManyToManyField('Tag')
     user = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True)
@@ -133,7 +134,6 @@ class Cromo_View(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     crowsourced = models.BooleanField(default=False)
     metadata = models.JSONField(null=True, blank=True)
-    model_path = models.CharField(max_length=200, null=True, blank=True)
     build_started_at = models.DateTimeField(null=True, blank=True)
     default_image = models.ImageField(upload_to=default_image, storage=MinioStorage(), null=True, blank=True)
     

@@ -17,7 +17,7 @@ import dotenv
 dotenv.load_dotenv()    
 
 
-MINIO_ENDPOINT = "http://minio:9001"
+MINIO_ENDPOINT = "http://minio:9000"
 CALLBACK_ENDPOINT = "http://web:8001/complete_build"
 TOKEN_REQUEST_ENDPOINT = "http://web:8001/api/token/"
 
@@ -139,7 +139,7 @@ def run_inference_subproc(
         print("Running command:", " ".join(cmd))
 
         result = subprocess.run(cmd, check=True, capture_output=True)
-        return result
+        return result.stdout.decode("utf-8").strip()
     except Exception as e:
         print(f"Inference failed: {e}")
 
@@ -196,7 +196,7 @@ async def inference(request: Request) -> Response:
         return Response(
             model_url="",
             report_url="",
-            view_name=request.view_name,
+            view_name=request.poi_name,
             poi_id=request.poi_id,
             message=f"{result}",
         )

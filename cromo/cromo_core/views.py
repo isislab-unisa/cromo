@@ -243,11 +243,11 @@ def serve(request):
 
     poi = Cromo_POI.objects.get(pk=poi_id)
     payload = {
-        "poi_id": poi_id,
+        "poi_id": str(poi_id),
         "inference_image": poi_view_image,
         "model_url": poi.model_path,
         "poi_name": poi.title,
-        "view_name": poi_view_name,
+        # "view_name": poi_view_name,
     }
     url = "http://ai_inference:8050/inference"
     headers = {"Content-type": "application/json"}
