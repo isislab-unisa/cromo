@@ -19,6 +19,7 @@ services:
     container_name: cromo
     volumes:
       - .:/workspace
+      - ./staticfiles:/workspace/staticfiles
     expose:
       - 8001
     depends_on:
@@ -65,17 +66,18 @@ services:
     ports:
       - "80:80"
     volumes:
+      - ./staticfiles:/workspace/staticfiles
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - web
-    entrypoint: >
-      /bin/sh -c '
-      until curl -f http://web:8001/health/; do
-        echo "Waiting for Django...";
-        sleep 3;
-      done;
-      nginx -g "daemon off;";
-      '
+    # entrypoint: >
+    #   /bin/sh -c '
+    #   until curl -f http://web:8001/health/; do
+    #     echo "Waiting for Django...";
+    #     sleep 3;
+    #   done;
+    #   nginx -g "daemon off;";
+    #   '
 
   minio:
     image: minio/minio
@@ -106,29 +108,29 @@ services:
       /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       '
     
-  ai_training:
-    image: cromo_ai_classification:training
-    container_name: ai_training
-    environment:
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env
-    gpus: all
-    user: root
-    ports:
-      - "8090:8090"
+  # ai_training:
+  #   image: cromo_ai_classification:training
+  #   container_name: ai_training
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   env_file:
+  #     - .env
+  #   gpus: all
+  #   user: root
+  #   ports:
+  #     - "8090:8090"
 
-  ai_inference:
-    image: cromo_ai_classification:inference
-    container_name: ai_inference
-    environment:
-      - PYTHONUNBUFFERED=1
-    env_file:
-      - .env
-    gpus: all
-    user: root
-    ports:
-      - "8050:8050"
+  # ai_inference:
+  #   image: cromo_ai_classification:inference
+  #   container_name: ai_inference
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   env_file:
+  #     - .env
+  #   gpus: all
+  #   user: root
+  #   ports:
+  #     - "8050:8050"
 
 
 volumes:

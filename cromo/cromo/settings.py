@@ -253,7 +253,10 @@ UNFOLD = {
     "SHOW_VIEW_ON_SITE": False,
     "DASHBOARD_CALLBACK": "cromo.views.dashboard_callback",
     "STYLES": [
-        lambda request: static("unfold/css/unfold.css"),
+        lambda request: static("css/styles.css"),
+    ],
+    "SCRIPTS": [
+        lambda request: static("js/scripts.js"),
     ],
     "SIDEBAR": {
         "show_search": True,
