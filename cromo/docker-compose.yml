@@ -68,6 +68,14 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - web
+    entrypoint: >
+      /bin/sh -c '
+      until curl -f http://web:8001/health/; do
+        echo "Waiting for Django...";
+        sleep 3;
+      done;
+      nginx -g "daemon off;";
+      '
 
   minio:
     image: minio/minio
