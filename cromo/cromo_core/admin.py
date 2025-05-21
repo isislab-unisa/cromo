@@ -104,5 +104,28 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
         cromo_poi = form.instance
         # generate_data_json(cromo_poi)
     
+    def has_change_permission(self, request, obj=None):
+        has_permission = super().has_change_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.status in ['BUILT', 'BUILDING', 'SERVING', 'ENQUEUED']:
+            return False
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        has_permission = super().has_delete_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.status in ['SERVING', 'BUILDING', 'ENQUEUED']:
+            return False
+        
+        if obj.user != request.user:
+            return False
+        return True
+    
     
 admin.site.register(Cromo_POI, Cromo_POIAdmin)
