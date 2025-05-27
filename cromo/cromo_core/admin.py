@@ -9,6 +9,12 @@ from location_field.widgets import LocationWidget
 from location_field.models.plain import PlainLocationField
 from django.utils.safestring import mark_safe
 import nested_admin
+from unfold.admin import TabularInline
+
+class MultiImageFormset(nested_admin.formsets.NestedInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form.base_fields['image'].widget.attrs['multiple'] = 'multiple'
 
 class TagAdmin(ModelAdmin):
     pass
@@ -21,20 +27,29 @@ def get_image_preview_html(img_url):
          onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
     ''')
 
-class Cromo_Image_Inline(nested_admin.NestedStackedInline):
+class Cromo_Image_Inline(nested_admin.NestedStackedInline, TabularInline):
     model = Cromo_Image
     extra = 1
+    formset = MultiImageFormset
     fields = ['image']
 
 admin.site.register(Cromo_Image)
 
-class Cromo_View_Inline(nested_admin.NestedStackedInline):
+class Cromo_View_Inline(nested_admin.NestedStackedInline, TabularInline):
     model = Cromo_View
     extra = 1
-    readonly_fields = [ 'crowsourced', 'timestamp', 'metadata']
-    list_display = ( 'tag')
-    fields = ['crowsourced', 'timestamp', 'tag', 'metadata', 'default_image']
+    readonly_fields = ['crowsourced', 'timestamp']
     inlines = [Cromo_Image_Inline]
+
+    fieldsets = (
+        (None, {
+            "fields": (
+                ('crowsourced', 'timestamp'),
+                'tag',
+                'default_image',
+            )
+        }),
+    )
     
     # def image_preview(self, obj):
     #     if obj.image:
@@ -66,6 +81,7 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
     inlines = [Cromo_View_Inline]
+    # change_form_template = "admin/cromo_core/cromo_poi/change_form.html"
     
     formfield_overrides = {
         PlainLocationField: {"widget": LocationWidget},
