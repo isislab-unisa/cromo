@@ -47,7 +47,7 @@ class Cromo_View_Inline(nested_admin.NestedStackedInline, TabularInline):
                 ('crowsourced', 'timestamp'),
                 'tag',
                 'default_image',
-            )
+            ),
         }),
     )
     
