@@ -86,6 +86,20 @@ def call_api_and_save(self, cromo_poi_id):
                     lock.release()
                 return f"Build failed for cromo POI {cromo_poi}"  
 
+        except Exception as e:
+            print(f"Errore nella chiamata API: {e}")
+            if response is not None and response.status_code != 200:
+                status = Status.FAILED
+                cromo_poi.status = status
+                cromo_poi.save()
+                send_mail(
+                    'Build Fallita',
+                    f"Cromo POI: {cromo_poi.title} fallita. Errore interno del server",
+                    os.environ.get('EMAIL_HOST_USER'),
+                    [cromo_poi.user.email],
+                    fail_silently=False,
+                )
+            return str(e)
         finally:
             pass
             # if lock.locked():

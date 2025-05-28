@@ -142,7 +142,7 @@
 
                                     <td data-label="Azioni" class="px-4 py-2 border-b">
                                         <div class="button-group">
-                                            {% if poi.status == 'READY' %}
+                                            {% if poi.status == 'READY' and poi.user_id == request.session.user_id %}
                                                 <form method="post" action="{% url 'build' %}" class="inline">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="poi_id" value="{{ poi.pk }}">

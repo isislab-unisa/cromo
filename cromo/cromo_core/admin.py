@@ -13,6 +13,29 @@ class TagAdmin(ModelAdmin):
     pass
 admin.site.register(Tag, TagAdmin)
 
+class Cromo_Image_Admin(ModelAdmin):
+    def has_change_permission(self, request, obj=None):
+        has_permission = super().has_change_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_view.cromo_poi.user != request.user:
+            return False
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        has_permission = super().has_delete_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_view.cromo_poi.user != request.user:
+            return False
+        return True
+
+admin.site.register(Cromo_Image, Cromo_Image_Admin)
+
 def get_image_preview_html(img_url):
     return mark_safe(f'''
     <img src="{img_url}" style="max-width:200px;cursor:pointer"
@@ -21,27 +44,17 @@ def get_image_preview_html(img_url):
 
 from django import forms
 from .models import Cromo_View
-from django.forms.widgets import FileInput
-
 from django.forms.widgets import ClearableFileInput
 
 class MultipleClearableFileInput(ClearableFileInput):
     def __init__(self, attrs=None):
         super().__init__(attrs)
-        default_classes = (
-            "file-input border border-base-200 rounded-default shadow-xs max-w-2xl "
-            "focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary-600 "
-            "group-[.errors]:border-red-600 focus-within:group-[.errors]:outline-red-500 "
-            "dark:border-base-700 dark:group-[.errors]:border-red-500 dark:focus-within:group-[.errors]:outline-red-500"
-        )
         if self.attrs is None:
             self.attrs = {}
         self.attrs['multiple'] = True
-        # self.attrs['class'] = default_classes
         
     def render(self, name, value, attrs=None, renderer=None):
         input_html = super().render(name, value, attrs, renderer)
-        # Optional: wrap in Unfold-like container
         return mark_safe(f"""
         <div class="flex w-full max-w-2xl items-center justify-between gap-2 rounded-default border border-base-200 px-3 py-2 shadow-xs dark:border-base-700">
             <label class="text-sm font-medium text-base-700 dark:text-base-200">
@@ -62,10 +75,21 @@ class MultipleFileField(forms.FileField):
     def clean(self, data, initial=None):
         single_file_clean = super().clean
         if isinstance(data, (list, tuple)):
-            result = [single_file_clean(d, initial) for d in data]
-        else:
-            result = [single_file_clean(data, initial)]
-        return result
+            return [single_file_clean(d, initial) for d in data]
+        return [single_file_clean(data, initial)]
+    
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        print("[DEBUG] Saving form for Cromo_View", instance)
+
+        uploaded_files = self.cleaned_data.get('uploaded_images')
+        print("[DEBUG] Uploaded files:", uploaded_files)
+
+        if instance.pk and uploaded_files:
+            for uploaded_file in uploaded_files:
+                Cromo_Image.objects.create(cromo_view=instance, image=uploaded_file)
+
+        return instance
 
 class CromoViewForm(forms.ModelForm):
     uploaded_images = forms.FileField(
@@ -75,25 +99,63 @@ class CromoViewForm(forms.ModelForm):
     )
 
     def clean_uploaded_images(self):
-        return self.files.getlist('uploaded_images')
+        field_name = self.add_prefix('uploaded_images')
+        return self.files.getlist(field_name)
+    
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        
+        if commit and hasattr(self, 'cleaned_data'):
+            uploaded_files = self.cleaned_data.get('uploaded_images', [])
+            for uploaded_file in uploaded_files:
+                Cromo_Image.objects.create(cromo_view=instance, image=uploaded_file)
+        
+        return instance
 
     class Meta:
         model = Cromo_View
         fields = ['tag', 'uploaded_images', 'default_image']
-
-admin.site.register(Cromo_Image)
 
 class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
     model = Cromo_View
     extra = 1
     form = CromoViewForm
     readonly_fields = ['crowsourced', 'timestamp']
+    
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
 
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-
-        for uploaded_file in request.FILES.getlist('uploaded_images'):
-            Cromo_Image.objects.create(cromo_view=obj, image=uploaded_file)
+        for formset in formsets:
+            for inline_form in formset.forms:
+                if not hasattr(inline_form, 'cleaned_data'):
+                    continue
+                uploaded_files = inline_form.cleaned_data.get('uploaded_images', [])
+                print("uploaded_files per form:", uploaded_files)
+                if uploaded_files:
+                    cromo_view = inline_form.instance
+                    print("Salvo per Cromo_View:", cromo_view)
+                    for uploaded_file in uploaded_files:
+                        Cromo_Image.objects.create(cromo_view=cromo_view, image=uploaded_file)
+    
+    def has_change_permission(self, request, obj=None):
+        has_permission = super().has_change_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_poi.user != request.user:
+            return False
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        has_permission = super().has_delete_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_poi.user != request.user:
+            return False
+        return True
     
 admin.site.register(Cromo_View)
         

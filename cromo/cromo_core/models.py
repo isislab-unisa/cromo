@@ -123,12 +123,6 @@ def default_image(instance, file_name):
     return f"{instance.cromo_poi.id}/default_image/{instance.tag}/{file_name}"
 
 class Cromo_View(models.Model):
-    # ITEMS_SCHEMA = {
-    #     'type': 'array', # a list which will contain the items
-    #     'items': {
-    #         'type': 'string' # items in the array are strings
-    #     }
-    # }
     tag = models.CharField(max_length=200)
     cromo_poi = models.ForeignKey(Cromo_POI, on_delete=models.CASCADE, related_name="images")
     timestamp = models.DateTimeField(auto_now_add=True, null=True, blank=True)
