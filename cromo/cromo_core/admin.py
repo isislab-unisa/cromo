@@ -2,8 +2,6 @@ from django.contrib import admin
 from .models import Cromo_POI, Tag, Cromo_View, Cromo_Image
 from unfold.admin import ModelAdmin, TabularInline
 import json
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage 
 from .models import MinioStorage
 from location_field.widgets import LocationWidget
 from location_field.models.plain import PlainLocationField
@@ -11,15 +9,9 @@ from django.utils.safestring import mark_safe
 import nested_admin
 from unfold.admin import TabularInline
 
-class MultiImageFormset(nested_admin.formsets.NestedInlineFormSet):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.form.base_fields['image'].widget.attrs['multiple'] = 'multiple'
-
 class TagAdmin(ModelAdmin):
     pass
 admin.site.register(Tag, TagAdmin)
-
 
 def get_image_preview_html(img_url):
     return mark_safe(f'''
@@ -27,52 +19,83 @@ def get_image_preview_html(img_url):
          onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
     ''')
 
-class Cromo_Image_Inline(nested_admin.NestedStackedInline, TabularInline):
-    model = Cromo_Image
-    extra = 1
-    formset = MultiImageFormset
-    fields = ['image']
+from django import forms
+from .models import Cromo_View
+from django.forms.widgets import FileInput
+
+from django.forms.widgets import ClearableFileInput
+
+class MultipleClearableFileInput(ClearableFileInput):
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        default_classes = (
+            "file-input border border-base-200 rounded-default shadow-xs max-w-2xl "
+            "focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary-600 "
+            "group-[.errors]:border-red-600 focus-within:group-[.errors]:outline-red-500 "
+            "dark:border-base-700 dark:group-[.errors]:border-red-500 dark:focus-within:group-[.errors]:outline-red-500"
+        )
+        if self.attrs is None:
+            self.attrs = {}
+        self.attrs['multiple'] = True
+        # self.attrs['class'] = default_classes
+        
+    def render(self, name, value, attrs=None, renderer=None):
+        input_html = super().render(name, value, attrs, renderer)
+        # Optional: wrap in Unfold-like container
+        return mark_safe(f"""
+        <div class="flex w-full max-w-2xl items-center justify-between gap-2 rounded-default border border-base-200 px-3 py-2 shadow-xs dark:border-base-700">
+            <label class="text-sm font-medium text-base-700 dark:text-base-200">
+                Upload Images
+                {input_html}
+            </label>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v6m0 0L8 16m4 2l4-2m-6-6h6m-3-4v4" />
+            </svg>
+        </div>
+        """)
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('widget', MultipleClearableFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = [single_file_clean(data, initial)]
+        return result
+
+class CromoViewForm(forms.ModelForm):
+    uploaded_images = forms.FileField(
+        required=False,
+        label='Views',
+        widget=MultipleClearableFileInput()
+    )
+
+    def clean_uploaded_images(self):
+        return self.files.getlist('uploaded_images')
+
+    class Meta:
+        model = Cromo_View
+        fields = ['tag', 'uploaded_images', 'default_image']
 
 admin.site.register(Cromo_Image)
 
-class Cromo_View_Inline(nested_admin.NestedStackedInline, TabularInline):
+class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
     model = Cromo_View
     extra = 1
+    form = CromoViewForm
     readonly_fields = ['crowsourced', 'timestamp']
-    inlines = [Cromo_Image_Inline]
 
-    fieldsets = (
-        (None, {
-            "fields": (
-                ('crowsourced', 'timestamp'),
-                'tag',
-                'default_image',
-            ),
-        }),
-    )
-    
-    # def image_preview(self, obj):
-    #     if obj.image:
-    #         from django.utils.html import format_html
-    #         link = obj.image.url.replace("minio", "localhost")
-    #         return get_image_preview_html(link)
-    #     return obj.image.url
-    # image_preview.short_description = 'Preview'
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        for uploaded_file in request.FILES.getlist('uploaded_images'):
+            Cromo_Image.objects.create(cromo_view=obj, image=uploaded_file)
     
 admin.site.register(Cromo_View)
-
-# def generate_data_json(instance):
-#     storage = MinioStorage()
-#     images = instance.images.all()
-#     data = [{
-#         "cromo_view_tag":img.tag,
-#         "url": img.image.url,
-#         "file_name": img.image.name,
-#     } for img in images]
-#     content = json.dumps(data, indent=2)
-#     file = ContentFile(content.encode('utf-8'))
-#     file_name = f"{instance.id}/data.json"
-#     storage.save(file_name, file)
         
 class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
@@ -81,7 +104,6 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
     inlines = [Cromo_View_Inline]
-    # change_form_template = "admin/cromo_core/cromo_poi/change_form.html"
     
     formfield_overrides = {
         PlainLocationField: {"widget": LocationWidget},
@@ -97,12 +119,6 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
         fields = ['title', 'location', 'status']
 
         return fields
-
-    # def get_readonly_fields(self, request, obj=None):
-    #     base = super().get_readonly_fields(request, obj)
-    #     if not request.user.is_superuser:
-    #         return base + ('user',)
-    #     return base
 
     def save_model(self, request, obj, form, change):
         if not change:
