@@ -99,17 +99,18 @@ class CromoViewForm(forms.ModelForm):
     )
 
     def clean_uploaded_images(self):
-        field_name = self.add_prefix('uploaded_images')
-        return self.files.getlist(field_name)
+        if not self.files:
+            return []
+        return self.files.getlist(self.add_prefix('uploaded_images')) or []
     
     def save(self, commit=True):
         instance = super().save(commit=commit)
-        
-        if commit and hasattr(self, 'cleaned_data'):
-            uploaded_files = self.cleaned_data.get('uploaded_images', [])
+
+        if commit and hasattr(self, 'cleaned_data') and 'uploaded_images' in self.cleaned_data:
+            uploaded_files = self.cleaned_data['uploaded_images']
             for uploaded_file in uploaded_files:
                 Cromo_Image.objects.create(cromo_view=instance, image=uploaded_file)
-        
+
         return instance
 
     class Meta:
@@ -143,8 +144,8 @@ class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
             return False
         if obj is None:
             return True
-        if obj.cromo_poi.user != request.user:
-            return False
+        # if obj.cromo_poi.user != request.user:
+        #     return False
         return True
     
     def has_delete_permission(self, request, obj=None):
@@ -153,8 +154,8 @@ class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
             return False
         if obj is None:
             return True
-        if obj.cromo_poi.user != request.user:
-            return False
+        # if obj.cromo_poi.user != request.user:
+        #     return False
         return True
     
 admin.site.register(Cromo_View)
@@ -205,6 +206,8 @@ class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
         if obj is None:
             return True
         if obj.status in ['BUILT', 'BUILDING', 'SERVING', 'ENQUEUED']:
+            return False
+        if obj.user != request.user:
             return False
         return True
     

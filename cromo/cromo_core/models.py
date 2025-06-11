@@ -137,6 +137,26 @@ class Cromo_View(models.Model):
     
     def __str__(self):
         return self.tag
+    
+    def get_folder_name(self):
+        return f"{self.cromo_poi.pk}"
+    
+    def delete(self, *args, **kwargs):
+        storage = MinioStorage()
+        folder_name = self.get_folder_name() + "/" + "data/" + "train/" + self.tag
+        train_elements = storage.bucket.objects.filter(Prefix=folder_name)
+        folder_name = self.get_folder_name() + "/" + "data/" + "test/" + self.tag
+        test_elements = storage.bucket.objects.filter(Prefix=folder_name)
+        try:
+            for k in train_elements:
+                k.delete()
+            for k in test_elements:
+                k.delete()
+        except:
+            objects = list(storage.bucket.objects.all())
+            object_keys = [obj.key for obj in objects]
+            raise Exception(f"La cartella {folder_name} non esiste. Oggetti presenti: {object_keys}")
+        super().delete(*args, **kwargs)
 
 class Cromo_Image(models.Model):
     cromo_view = models.ForeignKey(Cromo_View, related_name='images', on_delete=models.CASCADE, null=True, blank=True)
@@ -145,6 +165,26 @@ class Cromo_Image(models.Model):
     def __str__(self):
         return f"Image for {self.cromo_view.tag}"
     
+    def get_folder_name(self):
+        return f"{self.cromo_poi.pk}"
+    
+    def delete(self, *args, **kwargs):
+        storage = MinioStorage()
+        folder_name = self.get_folder_name() + "/" + "data/" + "train/" + self.tag
+        train_elements = storage.bucket.objects.filter(Prefix=folder_name)
+        folder_name = self.get_folder_name() + "/" + "data/" + "test/" + self.tag
+        test_elements = storage.bucket.objects.filter(Prefix=folder_name)
+        try:
+            for k in train_elements:
+                k.delete()
+            for k in test_elements:
+                k.delete()
+        except:
+            objects = list(storage.bucket.objects.all())
+            object_keys = [obj.key for obj in objects]
+            raise Exception(f"La cartella {folder_name} non esiste. Oggetti presenti: {object_keys}")
+        super().delete(*args, **kwargs)
+        
 @receiver(post_save, sender=Cromo_Image)
 def sync_test_train_images(sender, instance, created, **kwargs):
     if not instance.image:
