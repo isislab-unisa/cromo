@@ -117,7 +117,7 @@ class CromoViewForm(forms.ModelForm):
         model = Cromo_View
         fields = ['tag', 'uploaded_images', 'default_image']
 
-class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
+class Cromo_View_Inline(TabularInline, nested_admin.NestedInlineModelAdmin):
     model = Cromo_View
     extra = 1
     form = CromoViewForm
@@ -160,7 +160,7 @@ class Cromo_View_Inline(nested_admin.NestedInlineModelAdmin, TabularInline):
     
 admin.site.register(Cromo_View)
         
-class Cromo_POIAdmin(nested_admin.NestedModelAdmin, ModelAdmin):
+class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
     readonly_fields = ['status', 'user', 'creation_time']
     list_filter = ('status', 'user')
