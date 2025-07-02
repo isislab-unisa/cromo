@@ -161,7 +161,7 @@ def complete_build(request):
         return JsonResponse({"error": "Cromo POI not found"}, status=404)
 
 @swagger_auto_schema(
-    method='post',
+    method='get',
     operation_summary="Export POIs as GeoJSON",
     operation_description=(
         "Returns a downloadable GeoJSON file containing all Points of Interest (POIs) "
@@ -172,7 +172,7 @@ def complete_build(request):
     responses={200: 'Downloadable JSON file containing a FeatureCollection in GeoJSON format'}
 )
 @permission_classes([IsAuthenticated])
-@api_view(['POST'])
+@api_view(['GET'])
 def list(request):
     cromo_pois = Cromo_POI.objects.filter(status="READY")
     features = []
