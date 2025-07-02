@@ -4,7 +4,7 @@ from django.urls import path, include
 import nested_admin
 
 urlpatterns = [
-    path('', admin.site.urls),
+    path('admin/', admin.site.urls),
     path('', include('cromo_core.urls')),
     path('nested_admin/', include('nested_admin.urls')),
 ]
