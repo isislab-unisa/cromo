@@ -13,7 +13,7 @@ import os
 import json
 import io
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 import base64
 import uuid
 from django.core.files.base import ContentFile
@@ -216,9 +216,32 @@ def list(request):
     response = FileResponse(buffer, as_attachment=True, filename="list.json")
     response['Content-Type'] = 'application/json'
     return response
-
     
-    # return JsonResponse(geojson)
+@permission_classes([IsAuthenticated])
+@api_view(['POST'])
+def get_view(request):
+    poi_id = request.data.get('poi_id')
+    poi = Cromo_POI.objects.get(pk=poi_id)
+    views = poi.images.all()
+    views_data = []
+    for view in views:
+        images = view.images.all()
+        images_data = []
+        for image in images:
+            with open(image.image.path, 'rb') as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+            images_data.append({
+                "id": image.id,
+                "title": image.title,
+                "image": image_data,
+            })
+        views_data.append({
+            "id": view.id,
+            "title": view.title,
+            "images": images_data,
+        })
+    return JsonResponse({"views": views_data})    
+    
 
 @swagger_auto_schema(
     method='post',
@@ -240,6 +263,7 @@ def serve(request):
     poi_id = request.data.get('poi_id')
     poi_view_image = request.data.get('poi_view_image')
     poi_view_name = request.data.get('poi_view_name')
+    view = Cromo_View.objects.get(tag=poi_view_name, cromo_poi_id=poi_id)
 
     poi = Cromo_POI.objects.get(pk=poi_id)
     payload = {
