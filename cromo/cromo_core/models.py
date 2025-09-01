@@ -44,6 +44,9 @@ class CromoPOIQuerySet(models.QuerySet):
             obj.delete()
         super().delete(*args, **kwargs)
 
+def default_image_poi(instance, filename):
+    return f"{instance.id}/default_image/{filename}"
+
 class Cromo_POI(models.Model):
     title = models.CharField(max_length=64)
     model_path = models.CharField(max_length=200, null=True, blank=True)
@@ -55,10 +58,14 @@ class Cromo_POI(models.Model):
         choices=Status.choices,
         default=Status.READY
     )
-    location = PlainLocationField(zoom=7, null=True, blank=True)
+    # place = models.CharField(max_length=200, null=True, blank=True)
+    location = PlainLocationField(based_fields=['place'], zoom=7, null=True, blank=True)
     build_started_at = models.DateTimeField(null=True, blank=True)
     objects = CromoPOIQuerySet.as_manager()
-
+    # ID CityOpenSource
+    external_id = models.CharField(max_length=200, null=True, blank=True)
+    default_image = models.ImageField(upload_to=default_image_poi, storage=MinioStorage(), null=True, blank=True)
+    
     class Meta:
         db_table = "Cromo_POI"
         verbose_name = "Cromo POI"

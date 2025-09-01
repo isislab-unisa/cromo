@@ -159,18 +159,36 @@ class Cromo_View_Inline(TabularInline, nested_admin.NestedInlineModelAdmin):
         return True
     
 admin.site.register(Cromo_View)
-        
+
+from django import forms
+from django.utils.safestring import mark_safe
+import json
+
+class ExternalPOIWidget(forms.Select):
+    class Media:
+        js = ('js/external_poi.js',)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        html = super().render(name, value, attrs, renderer)
+        html += mark_safe('<div id="external-poi-preview"></div>')
+        return html
+
+class CromoPOIForm(forms.ModelForm):
+    class Meta:
+        model = Cromo_POI
+        fields = '__all__'
+        widgets = {
+            'external_id': ExternalPOIWidget
+        }
+
 class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
+    form = CromoPOIForm
     list_display = ('title', 'creation_time', 'status', 'user', 'location')
     readonly_fields = ['status', 'user', 'creation_time']
     list_filter = ('status', 'user')
     search_fields = ('title', 'description')
     date_hierarchy = 'creation_time'
     inlines = [Cromo_View_Inline]
-    
-    formfield_overrides = {
-        PlainLocationField: {"widget": LocationWidget},
-    }
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -179,8 +197,7 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
         return qs.filter(user=request.user)
 
     def get_fields(self, request, obj=None):
-        fields = ['title', 'location', 'status']
-
+        fields = ['title', 'location', 'default_image', 'status', 'external_id']
         return fields
 
     def save_model(self, request, obj, form, change):
