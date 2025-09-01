@@ -164,12 +164,47 @@ def complete_build(request):
     method='get',
     operation_summary="Export POIs as GeoJSON",
     operation_description=(
-        "Returns a downloadable GeoJSON file containing all Points of Interest (POIs) "
-        "with status 'READY'. Each POI is represented as a GeoJSON Feature with properties "
-        "such as ID, title, and number of associated images, and geographic coordinates "
-        "in 'Point' format."
+        "This endpoint returns a **downloadable GeoJSON file** containing all "
+        "Points of Interest (POIs) with status `READY`.\n\n"
+        "### How it works\n"
+        "- Filters POIs where `status = READY`\n"
+        "- Each POI is converted into a GeoJSON **Feature** with:\n"
+        "  - `id`: the POI ID\n"
+        "  - `POI`: the POI title\n"
+        "  - `geometry`: a `Point` object with geographic coordinates `[longitude, latitude]`\n\n"
+        "### Response format\n"
+        "Returns a `FeatureCollection` in GeoJSON format with the following structure:\n\n"
+        "```json\n"
+        "{\n"
+        "  \"type\": \"FeatureCollection\",\n"
+        "  \"name\": \"POI CROMO\",\n"
+        "  \"crs\": {\n"
+        "    \"type\": \"name\",\n"
+        "    \"properties\": {\n"
+        "      \"name\": \"urn:ogc:def:crs:OGC:1.3:CRS84\"\n"
+        "    }\n"
+        "  },\n"
+        "  \"features\": [\n"
+        "    {\n"
+        "      \"type\": \"Feature\",\n"
+        "      \"properties\": {\n"
+        "        \"id\": 1,\n"
+        "        \"POI\": \"Some Title\"\n"
+        "      },\n"
+        "      \"geometry\": {\n"
+        "        \"type\": \"Point\",\n"
+        "        \"coordinates\": [12.34, 56.78]\n"
+        "      }\n"
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "```\n\n"
+        "The response is returned as a **downloadable file** (`list.json`)."
     ),
-    responses={200: 'Downloadable JSON file containing a FeatureCollection in GeoJSON format'}
+    responses={
+        200: 'Downloadable GeoJSON file containing POIs as a FeatureCollection',
+        401: 'Unauthorized – user must be authenticated',
+    }
 )
 @permission_classes([IsAuthenticated])
 @api_view(['GET'])
@@ -216,46 +251,120 @@ def list(request):
     response = FileResponse(buffer, as_attachment=True, filename="list.json")
     response['Content-Type'] = 'application/json'
     return response
-    
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Get POI views with images",
+    operation_description=(
+        "Given a `poi_id`, this endpoint returns all **views** associated with the specified POI.\n\n"
+        "### Request\n"
+        "Send a JSON body with:\n"
+        "```json\n"
+        "{ \"poi_id\": 123 }\n"
+        "```\n\n"
+        "### Response format\n"
+        "Returns a JSON object with the list of views. Each view contains:\n"
+        "- `poi_id`: the ID of the POI\n"
+        "- `view_id`: the ID of the view\n"
+        "- `title`: the view tag/title\n"
+        "- `images`: a list of images, each with:\n"
+        "  - `id_image`: the image ID\n"
+        "  - `image`: the image file encoded as base64 string\n\n"
+        "Example:\n"
+        "```json\n"
+        "{\n"
+        "  \"views\": [\n"
+        "    {\n"
+        "      \"poi_id\": 123,\n"
+        "      \"view_id\": 45,\n"
+        "      \"title\": \"Front view\",\n"
+        "      \"images\": [\n"
+        "        {\n"
+        "          \"id_image\": 1,\n"
+        "          \"image\": \"/9j/4AAQSkZJRgABAQAAAQ...\"\n"
+        "        }\n"
+        "      ]\n"
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "```"
+    ),
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'poi_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the POI'),
+        },
+        required=['poi_id']
+    ),
+    responses={
+        200: 'JSON object containing all views with their images encoded in base64',
+        401: 'Unauthorized – user must be authenticated',
+        404: 'POI not found'
+    }
+)
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def get_view(request):
+    minio_storage = MinioStorage()
     poi_id = request.data.get('poi_id')
-    poi = Cromo_POI.objects.get(pk=poi_id)
+    try:
+        poi = Cromo_POI.objects.get(pk=poi_id)
+    except Cromo_POI.DoesNotExist:
+        return JsonResponse({"error": "POI not found"}, status=404)
     views = poi.images.all()
     views_data = []
     for view in views:
         images = view.images.all()
+        print(len(images), flush=True)
         images_data = []
         for image in images:
-            with open(image.image.path, 'rb') as f:
-                image_data = base64.b64encode(f.read()).decode('utf-8')
+            with image.image.open("rb") as f:
+                image_data = base64.b64encode(f.read()).decode("utf-8")
             images_data.append({
-                "id": image.id,
-                "title": image.title,
+                "id_image": image.id,
                 "image": image_data,
             })
         views_data.append({
-            "id": view.id,
-            "title": view.title,
+            "poi_id": poi.id,
+            "view_id": view.id,
+            "title": view.tag,
             "images": images_data,
         })
-    return JsonResponse({"views": views_data})    
-    
+    return JsonResponse({"views": views_data})     
 
 @swagger_auto_schema(
     method='post',
     operation_summary="Serve POI View",
-    operation_description="Returns the first image view and associated tag for a given POI as a downloadable JSON file.",
+    operation_description=(
+        "Performs inference on a given POI view image and returns the recognized tag as a **downloadable JSON file**.\n\n"
+        "### Request\n"
+        "Provide:\n"
+        "- `poi_id`: ID of the POI\n"
+        "- `poi_view_image`: Base64-encoded input image used for inference\n"
+        "- `poi_view_name`: (optional) Name of the POI view to match\n\n"
+        "### Response\n"
+        "A JSON file with the recognized tag:\n\n"
+        "```json\n"
+        "{\n"
+        "  \"tag\": \"Front View\"\n"
+        "}\n"
+        "```"
+    ),
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         required=['poi_id', 'poi_view_image'],
         properties={
             'poi_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the POI"),
             'poi_view_image': openapi.Schema(type=openapi.TYPE_STRING, format='byte', description="Base64-encoded input image for tag recognition"),
+            'poi_view_name': openapi.Schema(type=openapi.TYPE_STRING, description="Optional POI view name for filtering", nullable=True),
         }
     ),
-    responses={200: "File response with tag and view", 404: "POI not found"},
+    responses={
+        200: 'FileResponse with recognized tag as JSON',
+        401: 'Unauthorized - user must be authenticated',
+        404: 'POI or image not found',
+        500: 'Error during inference or response serving',
+    }
 )
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
@@ -284,7 +393,11 @@ def serve(request):
     
     if response.status_code == 200:
         res = {
-            "tag": response.json()['message'],
+            "message": response.json()['message'],
+            "view_id": view.id,
+            "tag": view.tag,
+            "poi_id_platform": view.cromo_poi_id,
+            "poi_id_cromo": "xxx",
         }
     elif response.status_code == 404:
         return JsonResponse({"error": "Image not found"}, status=404)
@@ -303,9 +416,21 @@ def serve(request):
     method='post',
     operation_summary="Add a new view to a POI",
     operation_description=(
-        "Adds a new image view to the specified Point of Interest (POI), along with a tag and "
-        "optional metadata. The view is marked as crowdsourced. The image is stored after being "
-        "encoded in Base64 format."
+        "Adds a new image view to the specified Point of Interest (POI).\n\n"
+        "The view is associated with a **tag** and optional **metadata**, "
+        "and the image is uploaded in Base64 format. The new view is marked as crowdsourced.\n\n"
+        "### Request\n"
+        "Send the following fields:\n"
+        "- `poi_id`: ID of the POI\n"
+        "- `tag`: descriptive tag for the image view\n"
+        "- `poi_view_image`: Base64-encoded image of the view\n"
+        "- `poi_metadata` (optional): metadata related to the POI view\n\n"
+        "### Response\n"
+        "```json\n"
+        "{\n"
+        "  \"message\": \"View added successfully\"\n"
+        "}\n"
+        "```"
     ),
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -314,10 +439,14 @@ def serve(request):
             'poi_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of the POI"),
             'tag': openapi.Schema(type=openapi.TYPE_STRING, description="Tag for the view image"),
             'poi_view_image': openapi.Schema(type=openapi.TYPE_STRING, format='byte', description="Base64-encoded image of the POI view"),
-            'poi_metadata': openapi.Schema(type=openapi.TYPE_STRING, description="Metadata related to the POI view", nullable=True),
+            'poi_metadata': openapi.Schema(type=openapi.TYPE_STRING, description="Optional metadata related to the POI view", nullable=True),
         }
     ),
-    responses={200: "View added successfully", 404: "POI not found"},
+    responses={
+        200: 'View added successfully',
+        401: 'Unauthorized – user must be authenticated',
+        404: 'POI not found',
+    }
 )
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
