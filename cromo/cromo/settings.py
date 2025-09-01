@@ -32,9 +32,9 @@ DEBUG = False
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    "unfold",  # before django.contrib.admin
     'rest_framework',
     'rest_framework.authtoken',
-    "unfold",  # before django.contrib.admin
     'cromo_core',
     'drf_yasg',
     'location_field.apps.DefaultConfig',

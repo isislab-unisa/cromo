@@ -164,14 +164,30 @@ from django import forms
 from django.utils.safestring import mark_safe
 import json
 
+from django import forms
+from django.utils.safestring import mark_safe
+
 class ExternalPOIWidget(forms.Select):
     class Media:
         js = ('js/external_poi.js',)
+        css = {
+            'all': ('unfold/css/unfold.css',)
+        }
 
     def render(self, name, value, attrs=None, renderer=None):
+        if attrs is None:
+            attrs = {}
+
+        classes = attrs.get('class', '')
+        classes += ' unfold-field unfold-select'
+        attrs['class'] = classes.strip()
+
         html = super().render(name, value, attrs, renderer)
-        html += mark_safe('<div id="external-poi-preview"></div>')
+
+        html += mark_safe('<div id="external-poi-preview" class="unfold-field unfold-preview" style="margin-top:10px;"></div>')
+
         return html
+
 
 class CromoPOIForm(forms.ModelForm):
     class Meta:

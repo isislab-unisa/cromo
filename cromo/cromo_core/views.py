@@ -216,13 +216,15 @@ def list(request):
         poi_id = poi.id
         title = poi.title
         location = poi.location
-        cromo_views = poi.images.all()
+        # cromo_views = poi.images.all()
+        external_id = poi.external_id
         l = location.split(",")
         lat, lng = float(l[0]), float(l[1])
         feature = {
             "type": "Feature",
             "properties": {
                 "id": poi_id,
+                "cityopensource_id": external_id,
                 "POI": title
             },
             "geometry": {
@@ -326,6 +328,7 @@ def get_view(request):
             })
         views_data.append({
             "poi_id": poi.id,
+            "cityopensource_id": poi.external_id,
             "view_id": view.id,
             "title": view.tag,
             "images": images_data,
