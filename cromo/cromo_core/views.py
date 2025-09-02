@@ -402,7 +402,7 @@ def serve(request):
             "view_id": view.id,
             "tag": view.tag,
             "poi_id_platform": view.cromo_poi_id,
-            "poi_id_cromo": "xxx",
+            "poi_id_cromo": poi.external_id,
         }
     elif response.status_code == 404:
         return JsonResponse({"error": "Image not found"}, status=404)

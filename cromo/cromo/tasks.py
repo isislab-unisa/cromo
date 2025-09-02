@@ -71,7 +71,7 @@ def call_api_and_save(self, cromo_poi_id):
                 )
                 return f"Cromo POI {cromo_poi} in building"
             else:
-                status = Status.FAILED
+                status = Status.READY
                 cromo_poi.status = status
                 cromo_poi.save()
                 send_mail(

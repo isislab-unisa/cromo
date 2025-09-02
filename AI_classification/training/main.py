@@ -66,11 +66,12 @@ s3 = boto3.client(
 
 #prefix = "root_folder/"
 def download_minio_folder(prefix: str, local_dir: str, s3_client):
+    print(f"Downloading {prefix} to {local_dir}", flush=True)
     """
     Downloads all objects from `bucket_name` under `prefix` to `local_dir`,
     preserving the folder hierarchy.
     """
-    prefix = prefix + "/data"
+    # prefix = prefix + "/data"
     try:
         paginator = s3_client.get_paginator(
             "list_objects_v2"
