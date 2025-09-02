@@ -12,7 +12,7 @@ from django.core.mail import send_mail
 import os
 import json
 import io
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 import base64
 import uuid
@@ -20,6 +20,7 @@ from django.core.files.base import ContentFile
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import requests
+from django.views.decorators.csrf import csrf_exempt
 
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
@@ -474,3 +475,32 @@ def add_view(request):
     save_base64_image_to_model(image64, c)
     # c.image.save(f"{time.time()}.{get_base64_extension(image64)}", ContentFile(poi_view_image), save=True)
     return JsonResponse({"message": "View added successfully"}, status=200)
+
+@csrf_exempt
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def proxy_id_cromopoi(request):
+    url = "https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations?format=json"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json"
+    }
+
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+    if r.status_code != 200:
+        return JsonResponse({
+            "error": f"Server remoto ha risposto {r.status_code}",
+            "text": r.text[:200]
+        }, status=r.status_code)
+
+    try:
+        data = r.json()
+    except ValueError:
+        return JsonResponse({"error": "Server remoto non ha restituito JSON valido", "text": r.text[:200]}, status=500)
+
+    return JsonResponse(data, safe=False)

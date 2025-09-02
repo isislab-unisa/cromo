@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const select = document.getElementById('id_external_id');
     if (!select) return;
 
-    fetch('https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations?format=json')
+    fetch('/proxy-id-cromopoi/', { credentials: 'omit' })
         .then(response => response.json())
         .then(data => {
             select.innerHTML = '<option value="">Seleziona un POI</option>';
