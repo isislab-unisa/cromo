@@ -281,7 +281,7 @@ async def read_root():
 @app.post("/train_model")
 async def train_model(request: Request) -> Response:
     try:
-        print(f"REQUEST: {request}")
+        print(f"REQUEST: {request}", flush=True)
 
         # CREATE A DIRECTORY FOR THE LESSON
         try:

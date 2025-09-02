@@ -47,13 +47,7 @@ services:
       - .env
     restart: always
     command: >
-      sh -c '
-        until nc -z redis 6379; do
-          echo "Waiting for Redis...";
-          sleep 2;
-        done;
-        celery -A cromo worker --concurrency=1 --loglevel=info
-      '
+      'celery -A cromo worker --concurrency=1 --loglevel=info'
 
   celery-beat:
     build: .
@@ -67,13 +61,7 @@ services:
       - .env
     restart: always
     command: >
-      sh -c '
-        until nc -z redis 6379; do
-          echo "Waiting for Redis...";
-          sleep 2;
-        done;
-        celery -A cromo worker --concurrency=1 --loglevel=info
-      '
+      'celery -A cromo worker --concurrency=1 --loglevel=info'
 
   redis:
     image: redis:7
@@ -129,17 +117,17 @@ services:
       /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       '
     
-  # ai_training:
-  #   build: ../AI_classification/training
-  #   container_name: ai_training
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #   env_file:
-  #     - .env
-  #   # gpus: all
-  #   user: root
-  #   ports:
-  #     - "8090:8090"
+  ai_training:
+    build: ../AI_classification/training
+    container_name: ai_training
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    # gpus: all
+    user: root
+    ports:
+      - "8090:8090"
 
   # ai_inference:
   #   image: cromo_ai_classification:inference
