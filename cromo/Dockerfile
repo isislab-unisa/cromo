@@ -5,17 +5,16 @@ WORKDIR /workspace
 COPY . .
 
 RUN apt-get update && \
-    apt-get install -y default-libmysqlclient-dev build-essential && \
-    pip install -r requirements.txt
-
-RUN apt-get update && \
-apt-get install -y ca-certificates && \
-update-ca-certificates
-
-RUN apt-get update && \
-    apt-get install -y gdal-bin libgdal-dev && \
-    apt-get clean && \
+    apt-get install -y --no-install-recommends \
+    default-libmysqlclient-dev \
+    build-essential \
+    gdal-bin \
+    libgdal-dev \
+    ca-certificates && \
+    update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
@@ -23,6 +22,3 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 RUN pip install gunicorn
 
 EXPOSE 8001
-
-CMD sh -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8001 cromo.wsgi:application"
-#  && python manage.py init_groups

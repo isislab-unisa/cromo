@@ -28,23 +28,16 @@ services:
     env_file:
       - .env
     restart: always
+    command: >
+      sh -c "python manage.py makemigrations &&
+            python manage.py migrate &&
+            python manage.py collectstatic --noinput &&
+            gunicorn --bind 0.0.0.0:8001 cromo.wsgi:application"
+
 
   celery:
     build: .
     container_name: cromo_celery
-    command: celery -A cromo worker --concurrency=1 --loglevel=info
-    volumes:
-      - .:/workspace
-    depends_on:
-      - web
-      - redis
-    env_file:
-      - .env
-
-  celery-beat:
-    build: .
-    container_name: cromo_celery_beat
-    command: celery -A cromo beat --loglevel=info
     volumes:
       - .:/workspace
     depends_on:
@@ -53,6 +46,34 @@ services:
     env_file:
       - .env
     restart: always
+    command: >
+      sh -c '
+        until nc -z redis 6379; do
+          echo "Waiting for Redis...";
+          sleep 2;
+        done;
+        celery -A cromo worker --concurrency=1 --loglevel=info
+      '
+
+  celery-beat:
+    build: .
+    container_name: cromo_celery_beat
+    volumes:
+      - .:/workspace
+    depends_on:
+      - web
+      - redis
+    env_file:
+      - .env
+    restart: always
+    command: >
+      sh -c '
+        until nc -z redis 6379; do
+          echo "Waiting for Redis...";
+          sleep 2;
+        done;
+        celery -A cromo worker --concurrency=1 --loglevel=info
+      '
 
   redis:
     image: redis:7
@@ -109,7 +130,7 @@ services:
       '
     
   # ai_training:
-  #   image: cromo_ai_classification:training
+  #   build: ../AI_classification/training
   #   container_name: ai_training
   #   environment:
   #     - PYTHONUNBUFFERED=1

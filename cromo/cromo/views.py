@@ -16,16 +16,10 @@ class DashboardView(UnfoldModelAdminViewMixin, TemplateView):
     template_name = "admin/index.html"
 
 def dashboard_callback(request, context):
-    # if request.user.is_superuser:
     serving_cromo_poi = Cromo_POI.objects.filter(status="SERVING").count()
     failed_cromo_poi = Cromo_POI.objects.filter(status="FAILED").count()
     building_cromo_poi = Cromo_POI.objects.filter(status="BUILDING").count()
     cromo_pois = Cromo_POI.objects.all()
-    # else:
-    #     serving_cromo_poi = Cromo_POI.objects.filter(user=request.user, status="SERVING").count()
-    #     failed_cromo_poi = Cromo_POI.objects.filter(user=request.user, status="FAILED").count()
-    #     building_cromo_poi = Cromo_POI.objects.filter(user=request.user, status="BUILDING").count()
-    #     cromo_pois = Cromo_POI.objects.filter(user=request.user)
     
     kpis = [
         {"title": "Serving Cromo POI", "metric": serving_cromo_poi},
@@ -33,9 +27,25 @@ def dashboard_callback(request, context):
         {"title": "Building Cromo POI", "metric": building_cromo_poi},
     ]
 
+    table_data = {
+        "headers": ["Title", "Creation Date", "User", "Status", "Actions"],
+        "rows": [
+            [
+                poi.title,
+                getattr(poi, "created_at", ""),
+                getattr(poi.user, "username", "") if hasattr(poi, "user") else "",
+                poi.status,
+                f"/admin/cromo_core/cromo_poi/{poi.id}/change/",
+            ]
+            for poi in cromo_pois
+        ]
+    }
+
     context.update({
         "kpis": kpis,
         "cromo_pois": cromo_pois,
+        "table_data": table_data,
     })
     
     return context
+
