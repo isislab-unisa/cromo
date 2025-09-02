@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from .views import pick_data_from_minio, render_xrts_viewer, build, pick_annotation_from_minio, complete_build, list, serve, add_view, \
-                   get_view, proxy_id_cromopoi
+                   get_view, proxy_id_cromopoi, stream_images
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -33,4 +33,5 @@ urlpatterns = [
    #  path("upload-poi/", upload_cromo_poi, name="upload_cromo_poi"),
     path("get-view/", get_view, name="get_view"),
     path("proxy-id-cromopoi/", proxy_id_cromopoi, name="proxy_id_cromopoi"),
+    path("stream-images/", stream_images, name="stream_images"),
 ]

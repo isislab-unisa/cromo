@@ -91,11 +91,22 @@ class MultipleFileField(forms.FileField):
 
         return instance
 
+class ExistingImagesWidget(forms.Widget):
+    """Widget per mostrare preview delle immagini già salvate"""
+    def render(self, name, value, attrs=None, renderer=None):
+        return mark_safe(value or "")
+    
 class CromoViewForm(forms.ModelForm):
     uploaded_images = forms.FileField(
         required=False,
         label='Views',
         widget=MultipleClearableFileInput()
+    )
+
+    existing_images = forms.CharField(
+        required=False,
+        label='Existing Images',
+        widget=ExistingImagesWidget()
     )
 
     def clean_uploaded_images(self):
@@ -116,6 +127,20 @@ class CromoViewForm(forms.ModelForm):
     class Meta:
         model = Cromo_View
         fields = ['tag', 'uploaded_images', 'default_image']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance.pk:
+            images = self.instance.images.all()
+            html_preview = '<div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;padding:5px;">'
+            html_preview += ''.join(
+                [f'<img src="/stream-images/?path={img.image.name}" style="max-width:100%;margin-bottom:5px;"> <br>' 
+                for img in images]
+            )
+            html_preview += '</div>'
+            self.fields['existing_images'].initial = html_preview
+
 
 class Cromo_View_Inline(TabularInline, nested_admin.NestedInlineModelAdmin):
     model = Cromo_View

@@ -136,7 +136,7 @@ services:
   #     - PYTHONUNBUFFERED=1
   #   env_file:
   #     - .env
-  #   gpus: all
+  #   # gpus: all
   #   user: root
   #   ports:
   #     - "8090:8090"

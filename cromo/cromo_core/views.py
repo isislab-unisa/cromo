@@ -1,3 +1,4 @@
+import mimetypes
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import render
@@ -504,3 +505,20 @@ def proxy_id_cromopoi(request):
         return JsonResponse({"error": "Server remoto non ha restituito JSON valido", "text": r.text[:200]}, status=500)
 
     return JsonResponse(data, safe=False)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def stream_images(request):
+    minio_storage = MinioStorage()
+    path = request.GET.get('path')
+    try:
+        file = minio_storage.open(path, mode='rb')
+        content_type, _ = mimetypes.guess_type(path)
+        if content_type is None:
+                    content_type = 'application/octet-stream'
+        response = FileResponse(file, as_attachment=False, filename=path)
+        response['Content-Type'] = content_type
+        return response
+    except FileNotFoundError:
+        return JsonResponse({"error": "File not found"}, status=404)
