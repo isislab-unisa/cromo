@@ -385,19 +385,13 @@ def serve(request):
         "inference_image": poi_view_image,
         "model_url": poi.model_path,
         "poi_name": poi.title,
-        # "view_name": poi_view_name,
     }
     url = "http://ai_inference:8050/inference"
     headers = {"Content-type": "application/json"}
     response = requests.post(url, headers=headers, json=payload)
 
-    # images = poi.images.all().first()
-    # tag = images.tag
-    # with images.image.open('rb') as img_file:
-    #     view = base64.b64encode(img_file.read()).decode('utf-8')
     print(response.json(), flush=True)
-    # if response.json()['message'] == None:
-    #     return JsonResponse({"error": "Error during inference"}, status=500)
+
     if "RIFIUTATO" in response.json()['message']:
         res = {
             "message": "No corrisponding view found",
