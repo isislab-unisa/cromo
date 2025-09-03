@@ -134,7 +134,7 @@ def main():
 
     if not os.path.exists(args.checkpoint):
         print(
-            f"File di cache non trovato: {args.checkpoint}. Esegui prima create_embedding_db.py."
+            f"File di cache non trovato: {args.checkpoint}. Esegui prima create_embedding_db.py.", flush=True
         )
         exit(1)
 
@@ -148,18 +148,19 @@ def main():
     # --- Fase 1: Recupero tramite Deep Learning ---
     query_embedding = extract_embedding(args.image_path, extractor, transform)
     if query_embedding is None:
+        print("   [Fase 1] Immagine di query non riconosciuta.", flush=True)
         exit(1)
 
     candidate, score = find_best_candidate_class(query_embedding, waypoint_index)
-    # print(
-    #     f"   [Fase 1] Miglior candidato: classe '{candidate['waypoint_name']}' (Similarità: {score:.4f})"
-    # )
+    print(
+        f"   [Fase 1] Miglior candidato: classe '{candidate['waypoint_name']}' (Similarità: {score:.4f})", flush=True
+    )
 
     if score < SIMILARITY_THRESHOLD:
-        # print(
-        #     f"   [RISULTATO] RIFIUTATO ❌ (Motivo: Bassa similarità, sotto la soglia di {SIMILARITY_THRESHOLD})"
-        # )
-        exit(1)
+        print(
+            f"   [RISULTATO] RIFIUTATO ❌ (Motivo: Bassa similarità, sotto la soglia di {SIMILARITY_THRESHOLD})", flush=True
+        )
+        return None
 
     # --- Fase 2: Verifica Geometrica Robusta ---
     candidate_waypoint_name = candidate["waypoint_name"]
@@ -192,15 +193,15 @@ def main():
 
     # --- Decisione Finale ---
     if overall_match_found:
-        # print(
-        #     f"   [RISULTATO] CORRISPONDENZA TROVATA: {candidate_waypoint_name} ✅ (Max Inliers: {max_inliers})"
-        # )
+        print(
+            f"   [RISULTATO] CORRISPONDENZA TROVATA: {candidate_waypoint_name} ✅ (Max Inliers: {max_inliers})"
+        )
         print(f"Recognized waypoint: {candidate_waypoint_name}")
         return candidate_waypoint_name
     else:
-        # print(
-        #     f"   [RISULTATO] RIFIUTATO ❌ (Motivo: Verifica geometrica fallita. Max Inliers: {max_inliers}, Necessari: {INLIER_THRESHOLD})"
-        # )
+        print(
+            f"   [RISULTATO] RIFIUTATO ❌ (Motivo: Verifica geometrica fallita. Max Inliers: {max_inliers}, Necessari: {INLIER_THRESHOLD})"
+        )
         print("No matching waypoint found.")
         return None
 

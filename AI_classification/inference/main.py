@@ -3,7 +3,7 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import boto3
@@ -15,8 +15,7 @@ import subprocess
 import base64
 from fastapi.responses import JSONResponse
 import dotenv
-dotenv.load_dotenv()    
-
+dotenv.load_dotenv()
 
 MINIO_ENDPOINT = "http://minio:9000"
 CALLBACK_ENDPOINT = "http://web:8001/complete_build/"
@@ -155,30 +154,23 @@ async def read_root():
     
 app = FastAPI()
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-import os, shutil, base64, subprocess
-
 @app.post("/inference")
 async def inference(request: Request):
     try:
-        # --- Leggi body JSON ---
-        body = await request.json()
-        model_url = body.get("model_url")
-        poi_name = body.get("poi_name")
-        poi_id = body.get("poi_id")
-        input_image_b64 = body.get("inference_image")
+        # body = await request.json()
+        model_url = request.model_url
+        poi_name = request.poi_name
+        poi_id = request.poi_id
+        input_image_b64 = request.inference_image
 
         print(f"Requested model: {model_url}", flush=True)
 
-        # --- Scarica modello da MinIO ---
         model, key = read_s3_file(model_url)
         if model is None:
             raise CustomHTTPException(
                 status_code=404, detail="Model not found", error_code=1003
             )
 
-        # --- Salva modello ---
         model_dir = os.path.join("/models", poi_name)
         os.makedirs(model_dir, exist_ok=True)
         model_path = os.path.join(model_dir, "model.pt")
@@ -186,7 +178,6 @@ async def inference(request: Request):
             f.write(model)
         print("MODEL DOWNLOADED", flush=True)
 
-        # --- Decodifica immagine base64 ---
         if not input_image_b64:
             raise CustomHTTPException(
                 status_code=404, detail="Image not found", error_code=1004
@@ -208,7 +199,6 @@ async def inference(request: Request):
                 status_code=400, detail="Invalid base64 image", error_code=1005
             )
 
-        # --- Salva immagine ---
         data_dir = os.path.join("/data", poi_name)
         os.makedirs(data_dir, exist_ok=True)
         image_path = os.path.join(data_dir, "input_image.jpg")
@@ -216,7 +206,6 @@ async def inference(request: Request):
             f.write(input_image_bytes)
         print("DATA DOWNLOADED", flush=True)
 
-        # --- Esegui inference ---
         cmd = [
             "python",
             "inference_script.py",
@@ -225,7 +214,7 @@ async def inference(request: Request):
         ]
         print(f"Running command: {' '.join(cmd)}", flush=True)
         result_proc = subprocess.run(cmd, capture_output=True, text=True)
-
+        print(result_proc.stdout, flush=True)
         if result_proc.returncode != 0:
             print("Inference failed:", result_proc.stderr, flush=True)
             raise CustomHTTPException(
@@ -237,7 +226,6 @@ async def inference(request: Request):
         print("INFERENCE DONE", flush=True)
         result = result_proc.stdout.strip()
 
-        # --- Pulisci cartella temporanea ---
         shutil.rmtree(data_dir, ignore_errors=True)
 
         return JSONResponse(

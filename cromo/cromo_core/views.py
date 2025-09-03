@@ -395,11 +395,22 @@ def serve(request):
     # tag = images.tag
     # with images.image.open('rb') as img_file:
     #     view = base64.b64encode(img_file.read()).decode('utf-8')
-    
+    print(response.json(), flush=True)
+    # if response.json()['message'] == None:
+    #     return JsonResponse({"error": "Error during inference"}, status=500)
+    if "RIFIUTATO" in response.json()['message']:
+        res = {
+            "message": "No corrisponding view found",
+            "view_id": "",
+            "tag": "",
+            "poi_id_platform": "",
+            "poi_id_cromo": "",
+        }
+        return JsonResponse(res)
     if response.status_code == 200:
         res = {
-            "message": response.json()['message'],
-            "view_id": view.id,
+            "message": response.json()['message'].split('\n')[-1],
+            "view_id": Cromo_View.objects.get(tag=response.json()['message'].split('\n')[-1].split(" ")[-1], cromo_poi_id=poi_id).id,
             "tag": view.tag,
             "poi_id_platform": view.cromo_poi_id,
             "poi_id_cromo": poi.external_id,

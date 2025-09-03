@@ -63,7 +63,7 @@ class Cromo_POI(models.Model):
     build_started_at = models.DateTimeField(null=True, blank=True)
     objects = CromoPOIQuerySet.as_manager()
     # ID CityOpenSource
-    external_id = models.CharField(max_length=200, null=True, blank=True)
+    external_id = models.CharField(max_length=200, null=True, blank=True, unique=True)
     default_image = models.ImageField(upload_to=default_image_poi, storage=MinioStorage(), null=True, blank=True)
     
     class Meta:

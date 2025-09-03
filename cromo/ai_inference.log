@@ -1,0 +1,58 @@
+
+   FastAPI   Starting production server 🚀
+ 
+             Searching for package file structure from directories with         
+             __init__.py files                                                  
+             Importing from /
+ 
+    module   📁 workspace      
+             ├── 🐍 __init__.py
+             └── 🐍 main.py    
+ 
+      code   Importing the FastAPI app object from the module with the following
+             code:                                                              
+ 
+             from workspace.main import app
+ 
+       app   Using import string: workspace.main:app
+ 
+    server   Server started at http://0.0.0.0:8050
+    server   Documentation at http://0.0.0.0:8050/docs
+ 
+             Logs:
+ 
+Requested model: 1/model.pt
+MODEL DOWNLOADED
+DATA DOWNLOADED
+Running command: python inference_script.py --image-path /data/Arco di Traiano/input_image.jpg --checkpoint /models/Arco di Traiano/model.pt
+Inference failed: 
+  0%|          | 0.00/97.8M [00:00<?, ?B/s]
+ 10%|▉         | 9.75M/97.8M [00:00<00:00, 102MB/s]
+ 21%|██        | 20.6M/97.8M [00:00<00:00, 109MB/s]
+ 33%|███▎      | 32.2M/97.8M [00:00<00:00, 114MB/s]
+ 44%|████▍     | 43.5M/97.8M [00:00<00:00, 116MB/s]
+ 56%|█████▌    | 54.8M/97.8M [00:00<00:00, 116MB/s]
+ 67%|██████▋   | 66.0M/97.8M [00:00<00:00, 117MB/s]
+ 79%|███████▉  | 77.2M/97.8M [00:00<00:00, 116MB/s]
+ 90%|█████████ | 88.5M/97.8M [00:00<00:00, 116MB/s]
+100%|██████████| 97.8M/97.8M [00:00<00:00, 115MB/s]
+
+      INFO   172.19.0.7:60328 - "POST /inference HTTP/1.1" 500
+Requested model: 1/model.pt
+MODEL DOWNLOADED
+DATA DOWNLOADED
+Running command: python inference_script.py --image-path /data/Arco di Traiano/input_image.jpg --checkpoint /models/Arco di Traiano/model.pt
+INFERENCE DONE
+      INFO   172.19.0.7:41432 - "POST /inference HTTP/1.1" 200
+Requested model: 1/model.pt
+MODEL DOWNLOADED
+DATA DOWNLOADED
+Running command: python inference_script.py --image-path /data/Arco di Traiano/input_image.jpg --checkpoint /models/Arco di Traiano/model.pt
+Inference failed: 
+      INFO   172.19.0.7:45938 - "POST /inference HTTP/1.1" 500
+Requested model: 1/model.pt
+MODEL DOWNLOADED
+DATA DOWNLOADED
+Running command: python inference_script.py --image-path /data/Arco di Traiano/input_image.jpg --checkpoint /models/Arco di Traiano/model.pt
+Inference failed: 
+      INFO   172.19.0.7:33736 - "POST /inference HTTP/1.1" 500
