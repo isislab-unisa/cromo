@@ -208,7 +208,8 @@ def complete_build(request):
         401: 'Unauthorized – user must be authenticated',
     }
 )
-@permission_classes([IsAuthenticated])
+@authentication_classes([])
+@permission_classes([AllowAny])
 @api_view(['GET'])
 def list(request):
     cromo_pois = Cromo_POI.objects.filter(status="READY")
@@ -306,7 +307,8 @@ def list(request):
         404: 'POI not found'
     }
 )
-@permission_classes([IsAuthenticated])
+@authentication_classes([])
+@permission_classes([AllowAny])
 @api_view(['POST'])
 def get_view(request):
     minio_storage = MinioStorage()
@@ -348,12 +350,23 @@ def get_view(request):
         "- `poi_view_image`: Base64-encoded input image used for inference\n"
         "- `poi_view_name`: (optional) Name of the POI view to match\n\n"
         "### Response\n"
-        "A JSON file with the recognized tag:\n\n"
-        "```json\n"
+        "A JSON file with the recognized tag. Two examples:\n\n"
+        "**Positive case:**\n```json\n"
         "{\n"
-        "  \"tag\": \"Front View\"\n"
-        "}\n"
-        "```"
+        "  \"message\": \"Recognized waypoint: prova\",\n"
+        "  \"view_id\": 1,\n"
+        "  \"tag\": \"prova\",\n"
+        "  \"poi_id_platform\": 1,\n"
+        "  \"poi_id_cromo\": \"2e858ccd-a678-0010-08d4-522f2312fc63\"\n"
+        "}\n```\n\n"
+        "**Negative case (no matching view):**\n```json\n"
+        "{\n"
+        "  \"message\": \"No corresponding view found\",\n"
+        "  \"view_id\": \"\",\n"
+        "  \"tag\": \"\",\n"
+        "  \"poi_id_platform\": \"\",\n"
+        "  \"poi_id_cromo\": \"\"\n"
+        "}\n```"
     ),
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
@@ -365,14 +378,34 @@ def get_view(request):
         }
     ),
     responses={
-        200: 'FileResponse with recognized tag as JSON',
-        401: 'Unauthorized - user must be authenticated',
+        200: openapi.Response(
+            description='FileResponse with recognized tag as JSON',
+            examples={
+                'application/json': {
+                    "positive": {
+                        "message": "Recognized waypoint: prova",
+                        "view_id": "xxxx",
+                        "tag": "prova",
+                        "poi_id_platform": "xxxID of the POI in the platform",
+                        "poi_id_cromo": "Alphanumeric ID of the POI in Cromo"
+                    },
+                    "negative": {
+                        "message": "No corresponding view found",
+                        "view_id": "",
+                        "tag": "",
+                        "poi_id_platform": "",
+                        "poi_id_cromo": ""
+                    }
+                }
+            }
+        ),
         404: 'POI or image not found',
         500: 'Error during inference or response serving',
     }
 )
-@permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def serve(request):
     poi_id = request.data.get('poi_id')
     poi_view_image = request.data.get('poi_view_image')
