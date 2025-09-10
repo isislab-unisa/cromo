@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = False
 
 ALLOWED_HOSTS = ['cromo.di.unisa.it', 'localhost', '127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ['https://cromo.di.unisa.it']
+CSRF_TRUSTED_ORIGINS = ['https://cromo.di.unisa.it', 'https://web']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
