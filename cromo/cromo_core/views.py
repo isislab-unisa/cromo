@@ -22,6 +22,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import requests
 from django.views.decorators.csrf import csrf_exempt
+import redis
+from redis.lock import Lock
 
 def get_base64_extension(base64_string):
     if ';base64,' in base64_string:
@@ -125,6 +127,7 @@ def build(request):
 @api_view(['POST'])
 def complete_build(request):
     print(f"Request data: {request.POST.get("poi_id")}")
+    redis_client = redis.StrictRedis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
     cromo_title = request.data.get('poi_name')
     cromo_poi_id =request.data.get('poi_id')
     model_url = request.data.get('model_url')
@@ -147,6 +150,10 @@ def complete_build(request):
             [cromo_poi.user.email],
             fail_silently=False,
         )
+        try:
+            redis_client.delete("build_lock")
+        except Exception as e:
+            print(f"Errore nell'eliminazione del lock: {e}")
         return JsonResponse({"message": "Build completata"}, status=200)
     else:
         cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
@@ -160,6 +167,10 @@ def complete_build(request):
             [cromo_poi.user.email],
             fail_silently=False,
         )
+        try:
+            redis_client.delete("build_lock")
+        except Exception as e:
+            print(f"Errore nell'eliminazione del lock: {e}")
         return JsonResponse({"error": "Cromo POI not found"}, status=404)
 
 @swagger_auto_schema(
