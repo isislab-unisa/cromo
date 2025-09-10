@@ -359,7 +359,7 @@ def get_view(request):
         "Provide:\n"
         "- `poi_id`: ID of the POI\n"
         "- `poi_view_image`: Base64-encoded input image used for inference\n"
-        "- `poi_view_name`: (optional) Name of the POI view to match\n\n"
+        "- `poi_view_name`: Name of the POI view to match\n\n"
         "### Response\n"
         "A JSON file with the recognized tag. Two examples:\n\n"
         "**Positive case:**\n```json\n"
