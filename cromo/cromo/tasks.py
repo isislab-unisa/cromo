@@ -159,7 +159,6 @@ def fail_stuck_builds():
         print(f"Errore nell'acquisizione del lock: {e}")
     
     try:
-        if build_lock.locked():
-            build_lock.release()
+        redis_client.delete("build_lock")
     except Exception as e:
         print(f"Errore nell'acquisizione del lock: {e}")
