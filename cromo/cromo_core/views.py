@@ -224,7 +224,7 @@ def complete_build(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def list(request):
-    cromo_pois = Cromo_POI.objects.filter(status="READY")
+    cromo_pois = Cromo_POI.objects.filter(status__in=["READY", "BUILT"])
     features = []
 
     for poi in cromo_pois:
