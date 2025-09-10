@@ -178,12 +178,15 @@ def complete_build(request):
     operation_summary="Export POIs as GeoJSON",
     operation_description=(
         "This endpoint returns a **downloadable GeoJSON file** containing all "
-        "Points of Interest (POIs) with status `READY`.\n\n"
+        "Points of Interest (POIs), regardless of their status.\n\n"
         "### How it works\n"
-        "- Filters POIs where `status = READY`\n"
+        "- Fetches **all POIs**\n"
         "- Each POI is converted into a GeoJSON **Feature** with:\n"
         "  - `id`: the POI ID\n"
+        "  - `cityopensource_id`: the external ID\n"
         "  - `POI`: the POI title\n"
+        "  - `status`: the POI status\n"
+        "  - `has_model`: `true` if the POI is `BUILT`, otherwise `false`\n"
         "  - `geometry`: a `Point` object with geographic coordinates `[longitude, latitude]`\n\n"
         "### Response format\n"
         "Returns a `FeatureCollection` in GeoJSON format with the following structure:\n\n"
@@ -191,18 +194,14 @@ def complete_build(request):
         "{\n"
         "  \"type\": \"FeatureCollection\",\n"
         "  \"name\": \"POI CROMO\",\n"
-        "  \"crs\": {\n"
-        "    \"type\": \"name\",\n"
-        "    \"properties\": {\n"
-        "      \"name\": \"urn:ogc:def:crs:OGC:1.3:CRS84\"\n"
-        "    }\n"
-        "  },\n"
         "  \"features\": [\n"
         "    {\n"
         "      \"type\": \"Feature\",\n"
         "      \"properties\": {\n"
         "        \"id\": 1,\n"
-        "        \"POI\": \"Some Title\"\n"
+        "        \"cityopensource_id\": \"abc123\",\n"
+        "        \"POI\": \"Some Title\",\n"
+        "        \"status\": \"xxxx\", \"// if status == BUILT the model to do recognition is available\"\n"
         "      },\n"
         "      \"geometry\": {\n"
         "        \"type\": \"Point\",\n"
@@ -219,12 +218,11 @@ def complete_build(request):
         401: 'Unauthorized – user must be authenticated',
     }
 )
-
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def list(request):
-    cromo_pois = Cromo_POI.objects.filter(status__in=["READY", "BUILT"])
+    cromo_pois = Cromo_POI.objects.all()
     features = []
 
     for poi in cromo_pois:
@@ -240,7 +238,8 @@ def list(request):
             "properties": {
                 "id": poi_id,
                 "cityopensource_id": external_id,
-                "POI": title
+                "POI": title,
+                "status": poi.status
             },
             "geometry": {
                 "type": "Point",
@@ -365,11 +364,11 @@ def get_view(request):
         "A JSON file with the recognized tag. Two examples:\n\n"
         "**Positive case:**\n```json\n"
         "{\n"
-        "  \"message\": \"Recognized waypoint: prova\",\n"
-        "  \"view_id\": 1,\n"
-        "  \"tag\": \"prova\",\n"
-        "  \"poi_id_platform\": 1,\n"
-        "  \"poi_id_cromo\": \"2e858ccd-a678-0010-08d4-522f2312fc63\"\n"
+        "  \"message\": \"Recognized waypoint: xxxx\",\n"
+        "  \"view_id\": xxxx,\n"
+        "  \"tag\": \"xxxx\",\n"
+        "  \"poi_id_platform\": xxxx,\n"
+        "  \"poi_id_cromo\": \"xxxx\"\n"
         "}\n```\n\n"
         "**Negative case (no matching view):**\n```json\n"
         "{\n"
