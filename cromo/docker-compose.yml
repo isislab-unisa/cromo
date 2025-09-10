@@ -59,6 +59,7 @@ services:
     env_file:
       - .env
     restart: always
+    command: celery -A cromo worker --concurrency=1 --loglevel=info
 
   redis:
     image: redis:7
