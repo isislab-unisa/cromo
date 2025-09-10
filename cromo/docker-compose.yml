@@ -75,6 +75,8 @@ services:
     volumes:
       - ./staticfiles:/workspace/staticfiles
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
     depends_on:
       - web
 
