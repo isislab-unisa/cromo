@@ -29,7 +29,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['cromo.di.unisa.it', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['https://cromo.di.unisa.it']
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 INSTALLED_APPS = [
     "unfold",  # before django.contrib.admin
