@@ -26,7 +26,7 @@ urlpatterns = [
     path('complete_build/', complete_build, name='complete_build'),
     path('list/', list, name='list'),
     path('serve/', serve, name='serve'),
-    path('add_view', add_view, name='add_view'),
+   #  path('add_view', add_view, name='add_view'),
     re_path(r'^docs/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

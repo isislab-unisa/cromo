@@ -383,9 +383,9 @@ def get_view(request):
             examples={
                 'application/json': {
                     "positive": {
-                        "message": "Recognized waypoint: prova",
+                        "message": "Recognized waypoint: xxxx",
                         "view_id": "xxxx",
-                        "tag": "prova",
+                        "tag": "xxxx",
                         "poi_id_platform": "xxxID of the POI in the platform",
                         "poi_id_cromo": "Alphanumeric ID of the POI in Cromo"
                     },
