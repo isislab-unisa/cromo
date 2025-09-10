@@ -134,7 +134,7 @@ def fail_stuck_builds():
             
     cromo_poi = None
     try:
-        timeout_minutes = 18 * 60 # 24 hours
+        timeout_minutes = 0.10 # 1 min
         threshold = timezone.now() - timedelta(minutes=timeout_minutes)
 
         cromo_poi = Cromo_POI.objects.filter(status=Status.BUILDING, build_started_at__lt=threshold).first()
