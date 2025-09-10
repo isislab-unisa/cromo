@@ -219,9 +219,10 @@ def complete_build(request):
         401: 'Unauthorized – user must be authenticated',
     }
 )
+
+@api_view(['GET'])
 @authentication_classes([])
 @permission_classes([AllowAny])
-@api_view(['GET'])
 def list(request):
     cromo_pois = Cromo_POI.objects.filter(status="READY")
     features = []
@@ -318,9 +319,9 @@ def list(request):
         404: 'POI not found'
     }
 )
+@api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny])
-@api_view(['POST'])
 def get_view(request):
     minio_storage = MinioStorage()
     poi_id = request.data.get('poi_id')
