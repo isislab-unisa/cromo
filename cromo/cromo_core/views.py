@@ -328,29 +328,38 @@ def get_view(request):
         poi = Cromo_POI.objects.get(pk=poi_id)
     except Cromo_POI.DoesNotExist:
         return JsonResponse({"error": "POI not found"}, status=404)
+
     views = poi.images.all()
     views_data = []
+
     for view in views:
         images = view.images.all()
-        print(len(images), flush=True)
         images_data = []
+
         for image in images:
-            # with image.image.open("rb") as f:
-            #     image_data = base64.b64encode(f.read()).decode("utf-8")
+            image_b64 = base64.b64encode(image.image.name.encode("utf-8")).decode("utf-8")
             images_data.append({
                 "id_image": image.id,
-                "image": f"https://cromo.di.unisa.it/stream-images/?path={image.image.name}",
+                "image": f"https://cromo.di.unisa.it/stream-images/?path={image_b64}",
             })
+
+        if view.default_image:
+            default_b64 = base64.b64encode(view.default_image.name.encode("utf-8")).decode("utf-8")
+            path_view = f"https://cromo.di.unisa.it/stream-images/?path={default_b64}"
+        else:
+            path_view = "Default image is not available."
+
         views_data.append({
             "poi_id": poi.id,
             "cityopensource_id": poi.external_id,
             "view_id": view.id,
             "title": view.tag,
-            "default_image": f"https://cromo.di.unisa.it/stream-images/?path={view.default_image.name}",
-
+            "default_image": path_view,
             "images": images_data,
         })
-    return JsonResponse({"views": views_data})     
+
+    return JsonResponse({"views": views_data})
+    
 
 @swagger_auto_schema(
     method='post',
@@ -564,11 +573,12 @@ def stream_images(request):
     minio_storage = MinioStorage()
     path = request.GET.get('path')
     try:
-        file = minio_storage.open(path, mode='rb')
-        content_type, _ = mimetypes.guess_type(path)
+        decoded_path = base64.b64decode(path).decode("utf-8")
+        file = minio_storage.open(decoded_path, mode='rb')
+        content_type, _ = mimetypes.guess_type(decoded_path)
         if content_type is None:
-                    content_type = 'application/octet-stream'
-        response = FileResponse(file, as_attachment=False, filename=path)
+            content_type = 'application/octet-stream'
+        response = FileResponse(file, as_attachment=False, filename=decoded_path)
         response['Content-Type'] = content_type
         return response
     except FileNotFoundError:
