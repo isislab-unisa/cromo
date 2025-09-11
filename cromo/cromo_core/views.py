@@ -335,17 +335,19 @@ def get_view(request):
         print(len(images), flush=True)
         images_data = []
         for image in images:
-            with image.image.open("rb") as f:
-                image_data = base64.b64encode(f.read()).decode("utf-8")
+            # with image.image.open("rb") as f:
+            #     image_data = base64.b64encode(f.read()).decode("utf-8")
             images_data.append({
                 "id_image": image.id,
-                "image": image_data,
+                "image": f"https://cromo.di.unisa.it/stream-images/?path={image.image.name}",
             })
         views_data.append({
             "poi_id": poi.id,
             "cityopensource_id": poi.external_id,
             "view_id": view.id,
             "title": view.tag,
+            "default_image": f"https://cromo.di.unisa.it/stream-images/?path={view.default_image.name}",
+
             "images": images_data,
         })
     return JsonResponse({"views": views_data})     
