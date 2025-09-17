@@ -35,6 +35,10 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'web',
 ]
+SWAGGER_SETTINGS = {
+    'DEFAULT_API_URL': 'https://cromo.di.unisa.it/api',
+}
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_TRUSTED_ORIGINS = ['https://cromo.di.unisa.it']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
