@@ -8,6 +8,7 @@ from location_field.models.plain import PlainLocationField
 from django.utils.safestring import mark_safe
 import nested_admin
 from unfold.admin import TabularInline
+from django import forms
 
 class TagAdmin(ModelAdmin):
     pass
@@ -185,18 +186,18 @@ class Cromo_View_Inline(TabularInline, nested_admin.NestedInlineModelAdmin):
     
 admin.site.register(Cromo_View)
 
-from django import forms
-from django.utils.safestring import mark_safe
-import json
-
-from django import forms
-from django.utils.safestring import mark_safe
-
 class ExternalPOIWidget(forms.Select):
     class Media:
-        js = ('js/external_poi.js',)
+        js = (
+            'https://code.jquery.com/jquery-3.6.0.min.js',
+            'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
+            'js/external_poi.js',
+        )
         css = {
-            'all': ('unfold/css/unfold.css',)
+            'all': (
+                'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css',
+                'unfold/css/unfold.css',
+            )
         }
 
     def render(self, name, value, attrs=None, renderer=None):
@@ -209,7 +210,7 @@ class ExternalPOIWidget(forms.Select):
 
         html = super().render(name, value, attrs, renderer)
 
-        html += mark_safe('<div id="external-poi-preview" class="unfold-field unfold-preview" style="margin-top:10px;"></div>')
+        html += mark_safe('<div id="external-poi-preview"></div>')
 
         return html
 
@@ -238,7 +239,7 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
         return qs.filter(user=request.user)
 
     def get_fields(self, request, obj=None):
-        fields = ['title', 'location', 'default_image', 'status', 'external_id']
+        fields = ['external_id', 'title', 'location', 'default_image', 'status']
         return fields
 
     def save_model(self, request, obj, form, change):

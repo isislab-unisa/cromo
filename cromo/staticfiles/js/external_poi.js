@@ -2,33 +2,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const select = document.getElementById('id_external_id');
     if (!select) return;
 
-    fetch('/proxy-id-cromopoi/', { credentials: 'omit' })
-        .then(response => response.json())
-        .then(data => {
-            select.innerHTML = '<option value="">Seleziona un POI</option>';
-            data.forEach(poi => {
-                const opt = document.createElement('option');
-                opt.value = poi.id;
-                opt.text = poi.title;
-                opt.dataset.lat = poi.lat;
-                opt.dataset.lon = poi.lon;
-                opt.dataset.image = poi.image;
-                select.add(opt);
-            });
+    if (window.jQuery && jQuery().select2) {
+        $(select).select2({
+            theme: 'unfold',
+            placeholder: 'Select a Cromo POI or create from scratch',
+            ajax: {
+                url: '/proxy-id-cromopoi/',
+                dataType: 'json',
+                processResults: function(data) {
+                    return {
+                        results: data.map(poi => ({
+                            id: poi.id,
+                            text: poi.title,
+                            lat: poi.lat,
+                            lon: poi.lon,
+                            image: poi.image
+                        }))
+                    };
+                }
+            }
         });
 
-    select.addEventListener('change', function() {
-        const opt = select.selectedOptions[0];
-        if (!opt || !opt.value) return;
+        $(select).on('select2:select', function(e) {
+            const data = e.params.data;
+            const titleField = document.getElementById('id_title');
+            const locField = document.getElementById('id_location');
+            const preview = document.getElementById('external-poi-preview');
 
-        document.getElementById('id_title').value = opt.text;
-
-        const lat = opt.dataset.lat;
-        const lon = opt.dataset.lon;
-        const locField = document.getElementById('id_location');
-        if (locField) {
-            locField.value = lat + ',' + lon;
-        }
-
-    });
+            if (titleField) titleField.value = data.text;
+            if (locField) locField.value = `${data.lat},${data.lon}`;
+        });
+    } else {
+        console.error('jQuery o Select2 non trovati!');
+    }
 });
