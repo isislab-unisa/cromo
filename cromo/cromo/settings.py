@@ -9,6 +9,10 @@ dotenv.load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+COS2_USERNAME = os.getenv("COS2_USERNAME")
+COS2_PASSWORD = os.getenv("COS2_PASSWORD")
+
+
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 

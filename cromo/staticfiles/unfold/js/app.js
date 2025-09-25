@@ -68,7 +68,7 @@ function searchDropdown() {
       }
     },
     prevItem() {
-      if (this.currentIndex > 0) {
+      if (this.currentIndex > 1) {
         this.currentIndex--;
       }
     },
@@ -93,6 +93,7 @@ function searchCommand() {
     hasResults: false,
     openCommandResults: false,
     currentIndex: 0,
+    totalItems: 0,
     commandHistory: JSON.parse(localStorage.getItem("commandHistory") || "[]"),
     handleOpen() {
       this.openCommandResults = true;
@@ -102,6 +103,7 @@ function searchCommand() {
       }, 20);
 
       this.items = document.querySelectorAll("#command-history li");
+      this.totalItems = this.items.length;
     },
     handleShortcut(event) {
       if (
@@ -121,21 +123,46 @@ function searchCommand() {
         this.openCommandResults = false;
         this.el.innerHTML = "";
         this.items = undefined;
+        this.totalItems = 0;
         this.currentIndex = 0;
       } else {
         this.$refs.searchInputCommand.value = "";
       }
     },
     handleContentLoaded(event) {
-      this.items = event.target.querySelectorAll("li");
-      this.currentIndex = 0;
-      this.hasResults = this.items.length > 0;
+      if (
+        event.target.id !== "command-results" &&
+        event.target.id !== "command-results-list"
+      ) {
+        return;
+      }
+
+      const commandResultsList = document.getElementById(
+        "command-results-list"
+      );
+      if (commandResultsList) {
+        this.items = commandResultsList.querySelectorAll("li");
+        this.totalItems = this.items.length;
+      } else {
+        this.items = undefined;
+        this.totalItems = 0;
+      }
+
+      if (event.target.id === "command-results") {
+        this.currentIndex = 0;
+
+        if (this.items) {
+          this.totalItems = this.items.length;
+        } else {
+          this.totalItems = 0;
+        }
+      }
+
+      this.hasResults = this.totalItems > 0;
 
       if (!this.hasResults) {
         this.items = document.querySelectorAll("#command-history li");
       }
-
-      new SimpleBar(event.target);
     },
     handleOutsideClick() {
       this.$refs.searchInputCommand.value = "";
@@ -158,7 +185,7 @@ function searchCommand() {
       }
     },
     nextItem() {
-      if (this.currentIndex < this.items.length) {
+      if (this.currentIndex < this.totalItems) {
         this.currentIndex++;
         this.scrollToActiveItem();
       }
@@ -417,6 +444,11 @@ const DEFAULT_CHART_OPTIONS = {
       ticks: {
         color: "#9ca3af",
         display: true,
+        maxTicksLimit: function (context) {
+          return context.chart.data.datasets.find(
+            (dataset) => dataset.maxTicksXLimit
+          )?.maxTicksXLimit;
+        },
       },
       grid: {
         display: true,
@@ -430,9 +462,22 @@ const DEFAULT_CHART_OPTIONS = {
         width: 0,
       },
       ticks: {
-        display: false,
-        font: {
-          size: 13,
+        color: "#9ca3af",
+        display: function (context) {
+          return context.chart.data.datasets.some((dataset) => {
+            return (
+              dataset.hasOwnProperty("displayYAxis") && dataset.displayYAxis
+            );
+          });
+        },
+        callback: function (value) {
+          const suffix = this.chart.data.datasets.find(
+            (dataset) => dataset.suffixYAxis
+          )?.suffixYAxis;
+          if (suffix) {
+            return `${value} ${suffix}`;
+          }
+          return value;
         },
       },
       grid: {
@@ -505,7 +550,7 @@ const renderCharts = () => {
       new Chart(ctx, {
         type: type || "bar",
         data: parsedData,
-        options: options ? JSON.parse(options) : DEFAULT_CHART_OPTIONS,
+        options: options ? JSON.parse(options) : { ...DEFAULT_CHART_OPTIONS },
       })
     );
   }

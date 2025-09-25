@@ -573,6 +573,14 @@ def stream_images(request):
     minio_storage = MinioStorage()
     path = request.GET.get('path')
     try:
+        file = minio_storage.open(path, mode='rb')
+        content_type, _ = mimetypes.guess_type(path)
+        if content_type is None:
+            content_type = 'application/octet-stream'
+        response = FileResponse(file, as_attachment=False, filename=path)
+        response['Content-Type'] = content_type
+        return response
+    except Exception:
         decoded_path = base64.b64decode(path).decode("utf-8")
         file = minio_storage.open(decoded_path, mode='rb')
         content_type, _ = mimetypes.guess_type(decoded_path)
@@ -581,5 +589,5 @@ def stream_images(request):
         response = FileResponse(file, as_attachment=False, filename=decoded_path)
         response['Content-Type'] = content_type
         return response
-    except FileNotFoundError:
-        return JsonResponse({"error": "File not found"}, status=404)
+    except FileNotFoundError as e:
+        return JsonResponse({"error": str(e)}, status=500)

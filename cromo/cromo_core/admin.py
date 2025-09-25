@@ -1,51 +1,70 @@
 from django.contrib import admin
 from .models import Cromo_POI, Tag, Cromo_View, Cromo_Image
 from unfold.admin import ModelAdmin, TabularInline
-import json
-from .models import MinioStorage
-from location_field.widgets import LocationWidget
-from location_field.models.plain import PlainLocationField
 from django.utils.safestring import mark_safe
 import nested_admin
 from unfold.admin import TabularInline
 from django import forms
+from django.contrib import messages
+from .cos2_client import COS2Client
+from django import forms
+from .models import Cromo_View
+from django.forms.widgets import ClearableFileInput
+from django.urls import path, reverse
+from django.shortcuts import redirect
 
 class TagAdmin(ModelAdmin):
     pass
 admin.site.register(Tag, TagAdmin)
 
-class Cromo_Image_Admin(ModelAdmin):
-    def has_change_permission(self, request, obj=None):
-        has_permission = super().has_change_permission(request, obj)
-        if not has_permission:
-            return False
-        if obj is None:
-            return True
-        if obj.cromo_view.cromo_poi.user != request.user:
-            return False
-        return True
+
+class Cromo_Image_Admin(admin.ModelAdmin):
+    list_display = ("id", "image_preview_with_delete")
+    readonly_fields = ("image_preview_with_delete",)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "<int:pk>/delete-image/",
+                self.admin_site.admin_view(self.delete_image),
+                name="cromo_image_delete",
+            ),
+        ]
+        return custom_urls + urls
+
+    def delete_image(self, request, pk, *args, **kwargs):
+        try:
+            obj = Cromo_Image.objects.get(pk=pk)
+            if obj.cromo_view.cromo_poi.user != request.user:
+                self.message_user(request, "Non hai i permessi per eliminare questa immagine.", level=messages.ERROR)
+            else:
+                obj.delete()
+                self.message_user(request, "Immagine eliminata con successo.", level=messages.SUCCESS)
+        except Cromo_Image.DoesNotExist:
+            self.message_user(request, "Immagine non trovata.", level=messages.ERROR)
+        return redirect("..")
+
+    @admin.display(description="Anteprima")
+    def image_preview_with_delete(self, obj):
+        if not obj.image:
+            return "-"
+        delete_url = reverse("admin:cromo_image_delete", args=[obj.pk])
+        html = f'''
+        <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+            <img src="{obj.image.url}" style="max-width:200px;cursor:pointer"
+                onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
+            <a href="{delete_url}" class="button" style="color:white;background:#d9534f;padding:4px 8px;border-radius:4px;text-decoration:none;"
+            onclick="return confirm('Sei sicuro di voler eliminare questa immagine?');">Elimina</a>
+        </div>
+        <button>DIOCANE</button>
+
+        '''
+        return mark_safe(html)
     
-    def has_delete_permission(self, request, obj=None):
-        has_permission = super().has_delete_permission(request, obj)
-        if not has_permission:
-            return False
-        if obj is None:
-            return True
-        if obj.cromo_view.cromo_poi.user != request.user:
-            return False
-        return True
+    image_preview_with_delete.short_description = "Anteprima"
 
 admin.site.register(Cromo_Image, Cromo_Image_Admin)
-
-def get_image_preview_html(img_url):
-    return mark_safe(f'''
-    <img src="{img_url}" style="max-width:200px;cursor:pointer"
-         onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
-    ''')
-
-from django import forms
-from .models import Cromo_View
-from django.forms.widgets import ClearableFileInput
 
 class MultipleClearableFileInput(ClearableFileInput):
     def __init__(self, attrs=None):
@@ -59,12 +78,8 @@ class MultipleClearableFileInput(ClearableFileInput):
         return mark_safe(f"""
         <div class="flex w-full max-w-2xl items-center justify-between gap-2 rounded-default border border-base-200 px-3 py-2 shadow-xs dark:border-base-700">
             <label class="text-sm font-medium text-base-700 dark:text-base-200">
-                Upload Images
                 {input_html}
             </label>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12v6m0 0L8 16m4 2l4-2m-6-6h6m-3-4v4" />
-            </svg>
         </div>
         """)
 
@@ -283,5 +298,71 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
             return False
         return True
     
+    def save_model(self, request, obj, form, change):
+        client = COS2Client()
+
+        if not change:
+            api_url = "https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations"
+
+            data = {"title": obj.title}
+            if obj.location and "," in obj.location:
+                lat, lon = obj.location.split(",", 1)
+                data["lat"] = lat.strip()
+                data["lon"] = lon.strip()
+
+            files = {}
+            if obj.default_image:
+                files["image"] = obj.default_image.file
+
+            try:
+                r = client.request("POST", api_url, data=data, files=files)
+                remote = r.json()
+
+                obj.external_id = remote.get("id")
+                obj.user = request.user
+                super().save_model(request, obj, form, change)
+
+            except Exception as e:
+                messages.error(request, f"Errore creazione remoto: {e}")
+                return
+
+        else:
+            super().save_model(request, obj, form, change)
+    
+    def delete_model(self, request, obj):
+        client = COS2Client()
+
+        if not obj.external_id:
+            messages.error(request, "Nessun external_id associato, impossibile eliminare remoto.")
+            return
+
+        api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
+
+        try:
+            r = client.request("DELETE", api_url)
+            if r.status_code in (200, 204):
+                super().delete_model(request, obj)
+            else:
+                messages.error(request, f"Errore eliminazione remota: {r.text}")
+        except Exception as e:
+            messages.error(request, f"Eccezione API remota: {e}")
+
+    def delete_queryset(self, request, queryset):
+        client = COS2Client()
+        for obj in queryset:
+            if not obj.external_id:
+                messages.error(request, f"{obj} non ha external_id, skip eliminazione remota.")
+                continue
+
+            api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
+
+            try:
+                r = client.request("DELETE", api_url)
+                if r.status_code in (200, 204):
+                    super().delete_model(request, obj)
+                else:
+                    messages.error(request, f"Errore eliminazione remota di {obj}: {r.text}")
+            except Exception as e:
+                messages.error(request, f"Eccezione API remota su {obj}: {e}")
     
 admin.site.register(Cromo_POI, Cromo_POIAdmin)
