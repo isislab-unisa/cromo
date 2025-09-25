@@ -19,9 +19,32 @@ admin.site.register(Tag, TagAdmin)
 
 
 class Cromo_Image_Admin(admin.ModelAdmin):
-    list_display = ("id", "image_preview_with_delete")
-    readonly_fields = ("image_preview_with_delete",)
 
+    def has_change_permission(self, request, obj=None):
+        has_permission = super().has_change_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_view.cromo_poi.status in ['BUILT', 'BUILDING', 'SERVING', 'ENQUEUED']:
+            return False
+        if obj.user != request.user:
+            return False
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        has_permission = super().has_delete_permission(request, obj)
+        if not has_permission:
+            return False
+        if obj is None:
+            return True
+        if obj.cromo_view.cromo_poi.status in ['SERVING', 'BUILDING', 'ENQUEUED']:
+            return False
+        
+        if obj.user != request.user:
+            return False
+        return True
+    
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -36,6 +59,7 @@ class Cromo_Image_Admin(admin.ModelAdmin):
     def delete_image(self, request, pk, *args, **kwargs):
         try:
             obj = Cromo_Image.objects.get(pk=pk)
+            poi_pk = obj.cromo_view.cromo_poi.pk 
             if obj.cromo_view.cromo_poi.user != request.user:
                 self.message_user(request, "Non hai i permessi per eliminare questa immagine.", level=messages.ERROR)
             else:
@@ -43,26 +67,8 @@ class Cromo_Image_Admin(admin.ModelAdmin):
                 self.message_user(request, "Immagine eliminata con successo.", level=messages.SUCCESS)
         except Cromo_Image.DoesNotExist:
             self.message_user(request, "Immagine non trovata.", level=messages.ERROR)
-        return redirect("..")
-
-    @admin.display(description="Anteprima")
-    def image_preview_with_delete(self, obj):
-        if not obj.image:
-            return "-"
-        delete_url = reverse("admin:cromo_image_delete", args=[obj.pk])
-        html = f'''
-        <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
-            <img src="{obj.image.url}" style="max-width:200px;cursor:pointer"
-                onclick="(function(s){{let m=document.createElement('div');m.style='position:fixed;top:0;left:0;width:100%;height:100%;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;';let i=document.createElement('img');i.src=s;i.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';m.onclick=()=>document.body.removeChild(m);m.appendChild(i);document.body.appendChild(m)}})(this.src)">
-            <a href="{delete_url}" class="button" style="color:white;background:#d9534f;padding:4px 8px;border-radius:4px;text-decoration:none;"
-            onclick="return confirm('Sei sicuro di voler eliminare questa immagine?');">Elimina</a>
-        </div>
-        <button>DIOCANE</button>
-
-        '''
-        return mark_safe(html)
-    
-    image_preview_with_delete.short_description = "Anteprima"
+        change_url = reverse("admin:cromo_core_cromo_poi_change", args=[poi_pk])
+        return redirect(change_url)
 
 admin.site.register(Cromo_Image, Cromo_Image_Admin)
 
@@ -108,9 +114,44 @@ class MultipleFileField(forms.FileField):
         return instance
 
 class ExistingImagesWidget(forms.Widget):
-    """Widget per mostrare preview delle immagini già salvate"""
+    """Widget per mostrare preview delle immagini già salvate con bottone elimina"""
     def render(self, name, value, attrs=None, renderer=None):
-        return mark_safe(value or "")
+        if not value:
+            return ""
+
+        html = '''
+        <div style="max-height:300px;overflow-y:auto;border:1px solid #ccc;padding:5px;display:flex;flex-direction:column;gap:10px;">
+        '''
+
+        for img in value:
+            delete_url = reverse("admin:cromo_image_delete", args=[img.pk])
+            html += f'''
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:5px; border-bottom:1px solid #eee;">
+                <div style="flex:1;">
+                    <img src="/stream-images/?path={img.image.name}" style="max-width:150px; max-height:150px; object-fit:contain; cursor:pointer;"
+                        onclick="(function(s){{
+                            let overlay = document.createElement('div');
+                            overlay.style='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;';
+                            let img = document.createElement('img');
+                            img.src=s;
+                            img.style='max-width:90%;max-height:90%;box-shadow:0 0 20px #000';
+                            overlay.appendChild(img);
+                            overlay.onclick=()=>document.body.removeChild(overlay);
+                            document.body.appendChild(overlay);
+                        }})(this.src)">
+                </div>
+                <div style="flex-shrink:0;">
+                    <a href="{delete_url}" class="button" 
+                       style="display:inline-block;color:white;background:#d9534f;padding:6px 12px;border-radius:4px;text-decoration:none;"
+                       onclick="return confirm('Sei sicuro di voler eliminare questa immagine?');">
+                       Elimina
+                    </a>
+                </div>
+            </div>
+            '''
+
+        html += '</div>'
+        return mark_safe(html)
     
 class CromoViewForm(forms.ModelForm):
     uploaded_images = forms.FileField(
@@ -125,11 +166,22 @@ class CromoViewForm(forms.ModelForm):
         widget=ExistingImagesWidget()
     )
 
+    class Meta:
+        model = Cromo_View
+        fields = ['tag', 'uploaded_images', 'default_image', 'existing_images']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance.pk:
+            images = self.instance.images.all()
+            self.fields['existing_images'].initial = images
+
     def clean_uploaded_images(self):
         if not self.files:
             return []
         return self.files.getlist(self.add_prefix('uploaded_images')) or []
-    
+
     def save(self, commit=True):
         instance = super().save(commit=commit)
 
@@ -139,24 +191,6 @@ class CromoViewForm(forms.ModelForm):
                 Cromo_Image.objects.create(cromo_view=instance, image=uploaded_file)
 
         return instance
-
-    class Meta:
-        model = Cromo_View
-        fields = ['tag', 'uploaded_images', 'default_image']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if self.instance.pk:
-            images = self.instance.images.all()
-            html_preview = '<div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;padding:5px;">'
-            html_preview += ''.join(
-                [f'<img src="/stream-images/?path={img.image.name}" style="max-width:100%;margin-bottom:5px;"> <br>' 
-                for img in images]
-            )
-            html_preview += '</div>'
-            self.fields['existing_images'].initial = html_preview
-
 
 class Cromo_View_Inline(TabularInline, nested_admin.NestedInlineModelAdmin):
     model = Cromo_View
@@ -215,21 +249,6 @@ class ExternalPOIWidget(forms.Select):
             )
         }
 
-    def render(self, name, value, attrs=None, renderer=None):
-        if attrs is None:
-            attrs = {}
-
-        classes = attrs.get('class', '')
-        classes += ' unfold-field unfold-select'
-        attrs['class'] = classes.strip()
-
-        html = super().render(name, value, attrs, renderer)
-
-        html += mark_safe('<div id="external-poi-preview"></div>')
-
-        return html
-
-
 class CromoPOIForm(forms.ModelForm):
     class Meta:
         model = Cromo_POI
@@ -256,11 +275,6 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
     def get_fields(self, request, obj=None):
         fields = ['external_id', 'title', 'location', 'default_image', 'status']
         return fields
-
-    def save_model(self, request, obj, form, change):
-        if not change:
-            obj.user = request.user
-        super().save_model(request, obj, form, change)
 
     def get_changeform_initial_data(self, request):
         initial = super().get_changeform_initial_data(request)

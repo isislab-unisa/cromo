@@ -173,23 +173,22 @@ class Cromo_Image(models.Model):
         return f"Image for {self.cromo_view.tag}"
     
     def get_folder_name(self):
-        return f"{self.cromo_poi.pk}"
+        if self.cromo_view and self.cromo_view.cromo_poi:
+            return f"{self.cromo_view.cromo_poi.pk}"
     
     def delete(self, *args, **kwargs):
         storage = MinioStorage()
-        folder_name = self.get_folder_name() + "/" + "data/" + "train/" + self.tag
-        train_elements = storage.bucket.objects.filter(Prefix=folder_name)
-        folder_name = self.get_folder_name() + "/" + "data/" + "test/" + self.tag
-        test_elements = storage.bucket.objects.filter(Prefix=folder_name)
         try:
-            for k in train_elements:
-                k.delete()
-            for k in test_elements:
-                k.delete()
-        except:
-            objects = list(storage.bucket.objects.all())
-            object_keys = [obj.key for obj in objects]
-            raise Exception(f"La cartella {folder_name} non esiste. Oggetti presenti: {object_keys}")
+            train_folder = f"{self.cromo_view.pk}/data/train/{self.cromo_view.tag}"
+            test_folder = f"{self.cromo_view.pk}/data/test/{self.cromo_view.tag}"
+            
+            for prefix in [train_folder, test_folder]:
+                objs = storage.bucket.objects.filter(Prefix=prefix)
+                for obj in objs:
+                    obj.delete()
+        except Exception as e:
+            print(f"[WARN] Errore eliminazione file MinIO: {e}")
+
         super().delete(*args, **kwargs)
         
 @receiver(post_save, sender=Cromo_Image)
