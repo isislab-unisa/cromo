@@ -12,6 +12,7 @@ from .models import Cromo_View
 from django.forms.widgets import ClearableFileInput
 from django.urls import path, reverse
 from django.shortcuts import redirect
+from django.core.exceptions import ValidationError
 
 class TagAdmin(ModelAdmin):
     pass
@@ -311,25 +312,35 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
         if obj.user != request.user:
             return False
         return True
-    
+
     def save_model(self, request, obj, form, change):
         client = COS2Client()
+        api_url = "https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations"
 
         if not change:
-            api_url = "https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations"
-
-            data = {"title": obj.title}
-            if obj.location and "," in obj.location:
-                lat, lon = obj.location.split(",", 1)
-                data["lat"] = lat.strip()
-                data["lon"] = lon.strip()
-
-            files = {}
-            if obj.default_image:
-                files["image"] = obj.default_image.file
-
             try:
+                r = client.request("GET", api_url)
+                existing = r.json()
+                existing_ids = [item.get("id") for item in existing if "id" in item]
+
+                if obj.external_id and obj.external_id in existing_ids:
+                    obj.user = request.user
+                    super().save_model(request, obj, form, change)
+                    messages.info(request, f"L'oggetto con external_id {obj.external_id} esiste già in remoto. Salvato solo localmente.")
+                    return
+
+                data = {"title": obj.title}
+                if obj.location and "," in obj.location:
+                    lat, lon = obj.location.split(",", 1)
+                    data["lat"] = lat.strip()
+                    data["lon"] = lon.strip()
+
+                files = {}
+                if obj.default_image:
+                    files["image"] = obj.default_image.file
+
                 r = client.request("POST", api_url, data=data, files=files)
+                r.raise_for_status()
                 remote = r.json()
 
                 obj.external_id = remote.get("id")
@@ -337,8 +348,7 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
                 super().save_model(request, obj, form, change)
 
             except Exception as e:
-                messages.error(request, f"Errore creazione remoto: {e}")
-                return
+                raise ValidationError(f"Errore durante il salvataggio remoto: {e}")
 
         else:
             super().save_model(request, obj, form, change)

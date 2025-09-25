@@ -1,11 +1,14 @@
-import requests, time
+import requests
 from django.conf import settings
-from django.core.cache import cache
 
 AUTH_URL = "https://cos2.cityopensource.com/api/v1/auth/signin"
 REFRESH_URL = "https://cos2.cityopensource.com/api/signin"
 
+
 class COS2Client:
+    _access_token = None
+    _refresh_token = None
+
     def __init__(self):
         self.username = settings.COS2_USERNAME
         self.password = settings.COS2_PASSWORD
@@ -17,29 +20,31 @@ class COS2Client:
         })
         r.raise_for_status()
         data = r.json()
-        # salva in cache
-        cache.set("cos2_access", data["accessToken"], timeout=23*3600)  # 23h
-        cache.set("cos2_refresh", data["refreshToken"], timeout=350*24*3600)
-        return data["accessToken"]
+        # salva in memoria
+        self.__class__._access_token = data.get("accessToken")
+        self.__class__._refresh_token = data.get("refreshToken")
+        return self._access_token
 
     def _refresh(self):
-        refresh_token = cache.get("cos2_refresh")
+        refresh_token = self.__class__._refresh_token
         if not refresh_token:
             return self._signin()
+
         r = requests.post(REFRESH_URL, json={
             "username": self.username,
             "refreshtoken": refresh_token
         })
         if r.status_code != 200:
             return self._signin()
+
         data = r.json()
-        cache.set("cos2_access", data["accessToken"], timeout=23*3600)
-        return data["accessToken"]
+        self.__class__._access_token = data.get("accessToken")
+        self.__class__._refresh_token = data.get("refreshToken", refresh_token)
+        return self._access_token
 
     def get_token(self):
-        token = cache.get("cos2_access")
-        if token:
-            return token
+        if self.__class__._access_token:
+            return self._access_token
         return self._signin()
 
     def request(self, method, url, **kwargs):
@@ -50,7 +55,6 @@ class COS2Client:
 
         r = requests.request(method, url, **kwargs)
         if r.status_code == 401:
-            # accessToken scaduto → refresh
             token = self._refresh()
             headers["Authorization"] = f"Bearer {token}"
             r = requests.request(method, url, **kwargs)
