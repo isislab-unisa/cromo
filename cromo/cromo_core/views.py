@@ -549,7 +549,7 @@ def proxy_id_cromopoi(request):
     }
 
     try:
-        r = requests.get(url, headers=headers, timeout=30)
+        r = requests.get(url, headers=headers, timeout=10)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
