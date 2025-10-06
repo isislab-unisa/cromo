@@ -537,11 +537,6 @@ def add_view(request):
     # c.image.save(f"{time.time()}.{get_base64_extension(image64)}", ContentFile(poi_view_image), save=True)
     return JsonResponse({"message": "View added successfully"}, status=200)
 
-import traceback
-import logging
-
-logger = logging.getLogger(__name__)
-
 @csrf_exempt
 @api_view(['GET'])
 @authentication_classes([])
@@ -555,11 +550,19 @@ def proxy_id_cromopoi(request):
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-        data = r.json()
     except Exception as e:
-        logger.error(f"Errore proxy: {e}\n{traceback.format_exc()}")
         return JsonResponse({"error": str(e)}, status=500)
+
+    if r.status_code != 200:
+        return JsonResponse({
+            "error": f"Server remoto ha risposto {r.status_code}",
+            "text": r.text[:200]
+        }, status=r.status_code)
+
+    try:
+        data = r.json()
+    except ValueError:
+        return JsonResponse({"error": "Server remoto non ha restituito JSON valido", "text": r.text[:200]}, status=500)
 
     return JsonResponse(data, safe=False)
 
