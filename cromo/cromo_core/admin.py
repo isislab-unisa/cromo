@@ -42,7 +42,7 @@ class Cromo_Image_Admin(admin.ModelAdmin):
         if obj.cromo_view.cromo_poi.status in ['SERVING', 'BUILDING', 'ENQUEUED']:
             return False
         
-        if obj.user != request.user:
+        if obj.cromo_view.cromo_poi.user != request.user:
             return False
         return True
     
@@ -371,22 +371,22 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
         except Exception as e:
             messages.error(request, f"Eccezione API remota: {e}")
 
-    def delete_queryset(self, request, queryset):
-        client = COS2Client()
-        for obj in queryset:
-            if not obj.external_id:
-                messages.error(request, f"{obj} non ha external_id, skip eliminazione remota.")
-                continue
+    # def delete_queryset(self, request, queryset):
+    #     client = COS2Client()
+    #     for obj in queryset:
+    #         if not obj.external_id:
+    #             messages.error(request, f"{obj} non ha external_id, skip eliminazione remota.")
+    #             continue
 
-            api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
+    #         api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
 
-            try:
-                r = client.request("DELETE", api_url)
-                if r.status_code in (200, 204):
-                    super().delete_model(request, obj)
-                else:
-                    messages.error(request, f"Errore eliminazione remota di {obj}: {r.text}")
-            except Exception as e:
-                messages.error(request, f"Eccezione API remota su {obj}: {e}")
+    #         try:
+    #             r = client.request("DELETE", api_url)
+    #             if r.status_code in (200, 204):
+    #                 super().delete_model(request, obj)
+    #             else:
+    #                 messages.error(request, f"Errore eliminazione remota di {obj}: {r.text}")
+    #         except Exception as e:
+    #             messages.error(request, f"Eccezione API remota su {obj}: {e}")
     
 admin.site.register(Cromo_POI, Cromo_POIAdmin)
