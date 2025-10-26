@@ -123,10 +123,13 @@ def build(request):
     ),
     responses={200: "Build status updated", 404: "POI not found", 500: "Error saving POI"},
 )
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def complete_build(request):
-    print(f"Request data: {request.POST.get("poi_id")}")
+    allowed_ip = "172.28.0.20"
+    remote_ip = request.META.get("REMOTE_ADDR")
+    if remote_ip != allowed_ip:
+        return JsonResponse({"error": "Access denied"}, status=403)
     redis_client = redis.StrictRedis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
     cromo_title = request.data.get('poi_name')
     cromo_poi_id =request.data.get('poi_id')

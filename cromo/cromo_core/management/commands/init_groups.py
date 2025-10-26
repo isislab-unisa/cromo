@@ -2,35 +2,27 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 
+
 class Command(BaseCommand):
-    help = 'Crea i gruppi Author e Student con i permessi associati'
+    help = 'Crea il gruppo "User" con i permessi per i modelli Cromo_POI, Cromo_Image, Cromo_View, CromoPOIQuerySet'
 
     def handle(self, *args, **kwargs):
-        from cromo_core.models import Cromo_POI, Tag
+        from cromo_core.models import Cromo_POI, Cromo_Image, Cromo_View, CromoPOIQuerySet
 
-        author_group, _ = Group.objects.get_or_create(name='Author')
-        student_group, _ = Group.objects.get_or_create(name='Student')
+        user_group, created = Group.objects.get_or_create(name='User')
 
-        cromo_poi_ct = ContentType.objects.get_for_model(Cromo_POI)
-        tag_ct = ContentType.objects.get_for_model(Tag)
+        poi_ct = ContentType.objects.get_for_model(Cromo_POI)
+        image_ct = ContentType.objects.get_for_model(Cromo_Image)
+        view_ct = ContentType.objects.get_for_model(Cromo_View)
+        queryset_ct = ContentType.objects.get_for_model(CromoPOIQuerySet)
 
-        cromo_poi_perms = [
-            Permission.objects.get(codename='add_cromo_poi', content_type=cromo_poi_ct),
-            Permission.objects.get(codename='view_cromo_poi', content_type=cromo_poi_ct),
-            Permission.objects.get(codename='change_cromo_poi', content_type=cromo_poi_ct),
-            Permission.objects.get(codename='delete_cromo_poi', content_type=cromo_poi_ct),
-        ]
+        perms = Permission.objects.filter(
+            content_type__in=[poi_ct, image_ct, view_ct, queryset_ct]
+        )
 
-        tag_perms = [
-            Permission.objects.get(codename='add_tag', content_type=tag_ct),
-            Permission.objects.get(codename='view_tag', content_type=tag_ct),
-            Permission.objects.get(codename='change_tag', content_type=tag_ct),
-            Permission.objects.get(codename='delete_tag', content_type=tag_ct),
-        ]
+        user_group.permissions.set(perms)
+        user_group.save()
 
-        author_group.permissions.set(cromo_poi_perms + tag_perms)
-        student_group.permissions.set([
-            Permission.objects.get(codename='view_cromo_poi', content_type=cromo_poi_ct)
-        ])
-
-        self.stdout.write(self.style.SUCCESS('Gruppi e permessi creati con successo.'))
+        self.stdout.write(self.style.SUCCESS(
+            'Gruppo "User" creato e permessi assegnati con successo ai modelli Cromo_POI, Cromo_Image, Cromo_View, CromoPOIQuerySet.'
+        ))

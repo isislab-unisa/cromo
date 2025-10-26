@@ -1,5 +1,12 @@
 version: '3.8'
 
+networks:
+  backend_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
 services:
   db:
     image: mysql:8.0
@@ -13,6 +20,9 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data_cromo:/var/lib/mysql
+    networks:
+      backend_net:
+        ipv4_address: 172.28.0.30
 
   web:
     build: .
@@ -31,9 +41,11 @@ services:
     command: >
       sh -c "python manage.py makemigrations &&
             python manage.py migrate &&
+            python manage.py init_groups &&
             python manage.py collectstatic --noinput &&
             gunicorn --bind 0.0.0.0:8001 cromo.wsgi:application --timeout 60 --workers 3"
-
+    networks:
+      - backend_net
 
   celery:
     build: .
@@ -47,6 +59,8 @@ services:
       - .env
     restart: always
     command: celery -A cromo worker --concurrency=1 --loglevel=info
+    networks:
+      - backend_net
 
   celery-beat:
     build: .
@@ -60,12 +74,16 @@ services:
       - .env
     restart: always
     command: celery -A cromo worker --concurrency=1 --loglevel=info
+    networks:
+      - backend_net
 
   redis:
     image: redis:7
     container_name: redis
     ports:
       - "6379:6379"
+    networks:
+      - backend_net
 
   nginx:
     image: nginx:latest
@@ -80,6 +98,8 @@ services:
       - ./certbot/conf:/etc/letsencrypt
     depends_on:
       - web
+    networks:
+      - backend_net
 
   minio:
     image: minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
@@ -93,6 +113,8 @@ services:
       - "9000:9000" # MinIO server API
     volumes:
       - minio_data:/data
+    networks:
+      - backend_net
 
   createbuckets:
     image: minio/mc@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3
@@ -109,6 +131,8 @@ services:
       /usr/bin/mc mb --quiet myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       /usr/bin/mc policy set none myminio/${AWS_STORAGE_BUCKET_NAME} || true;
       '
+    networks:
+      - backend_net
     
   ai_training:
     build: ../AI_classification/training
@@ -121,6 +145,9 @@ services:
     user: root
     ports:
       - "8090:8090"
+    networks:
+      backend_net:
+        ipv4_address: 172.28.0.20
 
   ai_inference:
     build: ../AI_classification/inference
@@ -133,6 +160,8 @@ services:
     user: root
     ports:
       - "8050:8050"
+    networks:
+      - backend_net
     
   certbot:
     image: certbot/certbot
@@ -147,6 +176,8 @@ services:
       --no-eff-email
       -d cromo.di.unisa.it
       -d cromo.di.unisa.it"
+    networks:
+      - backend_net
   
   certbot-renew:
     image: certbot/certbot

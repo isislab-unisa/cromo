@@ -178,57 +178,20 @@ def run_train(request: Request, view_dir: str, data_path: str):
         write_s3_file(
             model_path, f"{request.poi_id}/model.pt"
         )
-        
-        # write_s3_file(
-        #     report_path, f"{request.poi_id}/report.csv"
-        # )
-        
-        
-        # DELETE FOLDER
-        # shutil.rmtree(view_dir, ignore_errors=True)
-        # print("Folder deleted", flush=True)
-
-        # print("Running full pipeline...")
-        # time.sleep(5)  # Simulate processing time
-        # # Simulate successful completion of the pipeline
-
-        # REQUEST TOKEN
-        token_payload = {
-            "username": "root",
-            "password": "root",
-        }
-
-        token_response = requests.post(
-            TOKEN_REQUEST_ENDPOINT,
-            json=token_payload,
-        )
-        print(
-            "Token response:",
-            token_response.status_code,
-            token_response.text,
-            flush=True,
-        )
-        token_access = token_response.json().get("access")
 
         callback_payload = {
             "poi_id": int(request.poi_id),
             "poi_name": request.poi_name,
             "model_url": f"{request.poi_id}/model.pt",
-            # "report_url": f"{request.poi_id}/report.csv",	
             "status": "COMPLETED",
         }
         
         print("Callback payload:", callback_payload, flush=True)
 
-        headers = {
-            "Authorization": f"Bearer {token_access}",
-        }
-
         try:
             response = requests.post(
                 CALLBACK_ENDPOINT,
                 json=callback_payload,
-                headers=headers,
             )
             print("Callback response:", response.status_code, response.text, flush=True)
         except requests.RequestException as e:
