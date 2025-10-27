@@ -7,17 +7,16 @@ class Command(BaseCommand):
     help = 'Crea il gruppo "User" con i permessi per i modelli Cromo_POI, Cromo_Image, Cromo_View, CromoPOIQuerySet'
 
     def handle(self, *args, **kwargs):
-        from cromo_core.models import Cromo_POI, Cromo_Image, Cromo_View, CromoPOIQuerySet
+        from cromo_core.models import Cromo_POI, Cromo_Image, Cromo_View
 
         user_group, created = Group.objects.get_or_create(name='User')
 
         poi_ct = ContentType.objects.get_for_model(Cromo_POI)
         image_ct = ContentType.objects.get_for_model(Cromo_Image)
         view_ct = ContentType.objects.get_for_model(Cromo_View)
-        queryset_ct = ContentType.objects.get_for_model(CromoPOIQuerySet)
 
         perms = Permission.objects.filter(
-            content_type__in=[poi_ct, image_ct, view_ct, queryset_ct]
+            content_type__in=[poi_ct, image_ct, view_ct]
         )
 
         user_group.permissions.set(perms)

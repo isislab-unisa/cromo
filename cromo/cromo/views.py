@@ -16,13 +16,13 @@ class DashboardView(UnfoldModelAdminViewMixin, TemplateView):
     template_name = "admin/index.html"
 
 def dashboard_callback(request, context):
-    serving_cromo_poi = Cromo_POI.objects.filter(status="SERVING").count()
+    built_cromo_poi = Cromo_POI.objects.filter(status="BUILT").count()
     failed_cromo_poi = Cromo_POI.objects.filter(status="FAILED").count()
     building_cromo_poi = Cromo_POI.objects.filter(status="BUILDING").count()
     cromo_pois = Cromo_POI.objects.all()
     
     kpis = [
-        {"title": "Serving Cromo POI", "metric": serving_cromo_poi},
+        {"title": "Built Cromo POI", "metric": built_cromo_poi},
         {"title": "Failed Cromo POI", "metric": failed_cromo_poi},
         {"title": "Building Cromo POI", "metric": building_cromo_poi},
     ]

@@ -21,7 +21,7 @@ app.conf.task_queues = {
 app.conf.beat_schedule = {
     'fail-stuck-builds': {
         'task': 'cromo.tasks.fail_stuck_builds',
-        'schedule': timedelta(minutes=10),
+        'schedule': timedelta(seconds=10),
     },
 }
 

@@ -354,20 +354,20 @@ class Cromo_POIAdmin(ModelAdmin, nested_admin.NestedModelAdmin):
             super().save_model(request, obj, form, change)
     
     def delete_model(self, request, obj):
-        client = COS2Client()
+        # client = COS2Client()
 
-        if not obj.external_id:
-            messages.error(request, "Nessun external_id associato, impossibile eliminare remoto.")
-            return
+        # if not obj.external_id:
+        #     messages.error(request, "Nessun external_id associato, impossibile eliminare remoto.")
+        #     return
 
-        api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
+        # api_url = f"https://cos2.cityopensource.com/api/cromo/spaces/5b165325-183f-86fb-0210-9718f29af21e/locations/{obj.external_id}"
 
         try:
-            r = client.request("DELETE", api_url)
-            if r.status_code in (200, 204):
-                super().delete_model(request, obj)
-            else:
-                messages.error(request, f"Errore eliminazione remota: {r.text}")
+            # r = client.request("DELETE", api_url)
+            # if r.status_code in (200, 204):
+            super().delete_model(request, obj)
+            # else:
+            #     messages.error(request, f"Errore eliminazione remota: {r.text}")
         except Exception as e:
             messages.error(request, f"Eccezione API remota: {e}")
 

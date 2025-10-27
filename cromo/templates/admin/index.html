@@ -142,14 +142,18 @@
 
                                     <td data-label="Azioni" class="px-4 py-2 border-b">
                                         <div class="button-group">
-                                            {% if poi.status == 'READY' and poi.user_id == request.user.id %}
-                                                <form method="post" action="{% url 'build' %}" class="inline">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="poi_id" value="{{ poi.pk }}">
-                                                    <button type="submit" class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded shadow">
-                                                        Build
-                                                    </button>
-                                                </form>
+                                            {% if poi.status == 'READY'%}
+                                                {% if poi.user == request.user or request.user.is_superuser %}
+                                                    <form method="post" action="{% url 'build' %}" class="inline">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="poi_id" value="{{ poi.pk }}">
+                                                        <button type="submit" class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded shadow">
+                                                            Build
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <span class="text-sm text-gray-400 dark:text-gray-600">N/A</span>
+                                                {% endif %}
                                             {% else %}
                                                 <span class="text-sm text-gray-400 dark:text-gray-600">N/A</span>
                                             {% endif %}

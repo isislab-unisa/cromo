@@ -212,31 +212,6 @@ def run_train(request: Request, view_dir: str, data_path: str):
         
         print("Callback payload:", callback_payload, flush=True)
 
-        token_payload = {
-            "username": "root",
-            "password": "root",
-        }
-
-        try:
-            token_response = requests.post(
-                TOKEN_REQUEST_ENDPOINT,
-                json=token_payload,
-            )
-            print("Token response:", token_response.status_code, token_response.text)
-            token_access = token_response.json().get("access")
-            headers = {
-                "Authorization": f"Bearer {token_access}",
-            }
-
-            response = requests.post(
-                CALLBACK_ENDPOINT,
-                json=callback_payload,
-                headers=headers,
-            )
-            print("Callback response:", response.status_code, response.text, flush=True)
-        except requests.RequestException as e:
-            print(f"Error sending callback: {e}", flush=True)
-
 @app.get("/")
 async def read_root():
     return {"Hello": "World"}

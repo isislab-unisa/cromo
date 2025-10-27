@@ -123,9 +123,10 @@ def build(request):
     ),
     responses={200: "Build status updated", 404: "POI not found", 500: "Error saving POI"},
 )
-# @permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def complete_build(request):
+    print(f"Request data: {request.data}", flush=True)
     allowed_ip = "172.28.0.20"
     remote_ip = request.META.get("REMOTE_ADDR")
     if remote_ip != allowed_ip:

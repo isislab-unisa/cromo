@@ -20,7 +20,7 @@ redis_client = redis.StrictRedis.from_url(os.getenv("REDIS_URL", "redis://redis:
 def call_api_and_save(self, cromo_poi_id):
     storage = MinioStorage()
     response = None
-    lock = Lock(redis_client, "build_lock", timeout=24 * 60 * 60)
+    lock = Lock(redis_client, "build_lock", blocking_timeout=5 * 60)
 
     try:
         cromo_poi = Cromo_POI.objects.get(pk=cromo_poi_id)
@@ -28,7 +28,7 @@ def call_api_and_save(self, cromo_poi_id):
 
         print("Tentativo di acquisizione lock...")
         try:
-            acquired = lock.acquire(blocking=True, blocking_timeout=24 * 60 * 60)
+            acquired = lock.acquire(blocking=True, blocking_timeout=5 * 60)
             print(f"Acquired: {acquired}")
             if not acquired:
                 print(f"Could not acquire lock for cromo poi {cromo_poi_id}, retrying...")
