@@ -6,3 +6,6 @@ __pycache__/
 images/
 videos/
 certbot/
+cromo/staticfiles/*
+!cromo/staticfiles/js/
+
