@@ -5,16 +5,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.jQuery && jQuery().select2) {
         let localExternalIds = [];
 
-        // 1️⃣ First, load local POIs (from Django /list/)
         fetch('/list/')
             .then(response => response.json())
             .then(localData => {
-                // Extract all existing external_ids from your local DB
                 localExternalIds = localData.features
                     .map(f => f.properties.cityopensource_id)
                     .filter(Boolean);
 
-                // 2️⃣ Initialize Select2 after we have local IDs
                 $(select).select2({
                     theme: 'unfold',
                     placeholder: 'Select a Cromo POI or create from scratch',
@@ -40,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-                // 3️⃣ When selecting a POI, fill other form fields
                 $(select).on('select2:select', function(e) {
                     const data = e.params.data;
                     const titleField = document.getElementById('id_title');
