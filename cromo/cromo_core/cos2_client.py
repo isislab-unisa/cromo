@@ -14,13 +14,22 @@ class COS2Client:
         self.password = settings.COS2_PASSWORD
 
     def _signin(self):
-        r = requests.post(AUTH_URL, json={
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "curl/8.5.0"
+        }
+        payload = {
             "username": self.username,
             "password": self.password
-        })
+        }
+
+        r = requests.post(AUTH_URL, headers=headers, json=payload)
+        print(">>> STATUS:", r.status_code)
+        print(">>> RESPONSE:", r.text)
         r.raise_for_status()
+
         data = r.json()
-        # salva in memoria
         self.__class__._access_token = data.get("accessToken")
         self.__class__._refresh_token = data.get("refreshToken")
         return self._access_token
