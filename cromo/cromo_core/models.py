@@ -141,6 +141,12 @@ class Cromo_View(models.Model):
     class Meta:
         verbose_name = "Cromo View"
         verbose_name_plural = "Cromo Views"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cromo_poi", "tag"],
+                name="unique_tag_per_poi"
+            )
+        ]
     
     def __str__(self):
         return self.tag

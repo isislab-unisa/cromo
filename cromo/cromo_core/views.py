@@ -44,57 +44,6 @@ def save_base64_image_to_model(base64_data, instance, field_name='image'):
     instance.save()
 
 @login_required
-@require_http_methods(['GET'])
-def pick_data_from_minio(request, resource):
-    try:
-        file_name = base64.b64decode(resource).decode('utf-8')
-        print(f"[DEBUG] Decoded file_name from base64: {file_name}")
-    except Exception as e:
-        return JsonResponse({"error": f"Invalid base64 encoding: {str(e)}"}, status=400)
-
-    if not file_name:
-        return JsonResponse({"error": "File name not provided"}, status=400)
-
-    minio_storage = MinioStorage()
-
-    try:
-        file = minio_storage.open(file_name, mode='rb')
-        response = FileResponse(file, as_attachment=True, filename=file_name)
-        response['Content-Type'] = 'application/octet-stream'
-        return response
-    except FileNotFoundError:
-        return JsonResponse({"error": "File not found"}, status=404)
-
-@login_required
-@require_http_methods(['GET'])
-def pick_annotation_from_minio(request, annotation):
-    try:
-        file_name = base64.b64decode(annotation).decode('utf-8')
-        print(f"[DEBUG] Decoded file_name from base64: {file_name}")
-    except Exception as e:
-        return JsonResponse({"error": f"Invalid base64 encoding: {str(e)}"}, status=400)
-
-    if not file_name:
-        return JsonResponse({"error": "File name not provided"}, status=400)
-
-    minio_storage = MinioStorage()
-
-    try:
-        file = minio_storage.open(file_name, mode='rb')
-        response = FileResponse(file, as_attachment=True, filename=file_name)
-        response['Content-Type'] = 'application/json'
-        return response
-    except FileNotFoundError:
-        return JsonResponse({"error": "File not found"}, status=404)
-
-@login_required
-@require_http_methods(['POST'])
-def render_xrts_viewer(request):
-    return render(request, 'viewer/xrts-viewer.html', context={'resource': request.POST.get('resource'),
-                                                               'title': request.POST.get('title'),
-                                                               'annotation': request.POST.get('annotation')})
-
-@login_required
 @require_http_methods(['POST'])
 def build(request):
     cromo_poi_id = request.POST.get('poi_id')
@@ -126,7 +75,6 @@ def build(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def complete_build(request):
-    print(f"Request data: {request.data}", flush=True)
     allowed_ip = "172.28.0.20"
     remote_ip = request.META.get("REMOTE_ADDR")
     if remote_ip != allowed_ip:
@@ -436,9 +384,17 @@ def serve(request):
     poi_id = request.data.get('poi_id')
     poi_view_image = request.data.get('poi_view_image')
     poi_view_name = request.data.get('poi_view_name')
-    view = Cromo_View.objects.get(tag=poi_view_name, cromo_poi_id=poi_id)
+    
+    try:
+        poi = Cromo_POI.objects.get(pk=poi_id)
+    except Cromo_POI.DoesNotExist:
+        return JsonResponse({"message": "POI not found"}, status=404)
 
-    poi = Cromo_POI.objects.get(pk=poi_id)
+    try:
+        view = Cromo_View.objects.get(tag=poi_view_name, cromo_poi_id=poi_id)
+    except Cromo_View.DoesNotExist:
+        return JsonResponse({"message": "No corresponding view found"}, status=404)
+    
     payload = {
         "poi_id": str(poi_id),
         "inference_image": poi_view_image,
@@ -460,10 +416,11 @@ def serve(request):
             "poi_id_cromo": "",
         }
         return JsonResponse(res)
+    
     if response.status_code == 200:
         res = {
             "message": response.json()['message'].split('\n')[-1],
-            "view_id": Cromo_View.objects.get(tag=response.json()['message'].split('\n')[-1].split(" ")[-1], cromo_poi_id=poi_id).id,
+            "view_id": view.id,
             "tag": view.tag,
             "poi_id_platform": view.cromo_poi_id,
             "poi_id_cromo": poi.external_id,
